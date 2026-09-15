@@ -20,6 +20,8 @@ app/
   data/generated/           synthetic assets/sensors/weather/incidents (generated, not hand-written)
 scripts/
   generate_synthetic_data.py   regenerate all data under app/data/generated/ (deterministic, seeded)
+tests/
+  test_risk_engine.py           proves the specific claims in the docs are actually true of the code
 ```
 
 ## Run
@@ -34,6 +36,21 @@ uvicorn app.main:app --reload --port 8000
 
 Docs: http://localhost:8000/docs (FastAPI auto-generated OpenAPI UI — judges can
 poke at every endpoint directly here).
+
+## Tests
+
+```bash
+pytest
+```
+
+5 tests that verify the specific claims made in the docs are actually true of
+the running code — not just asserted: the top-ranked asset always has both a
+degrading sensor trend and a forecast storm in its region, risk tiers
+actually discriminate on sensor anomaly, maintenance dates land before
+forecast storms, and `grid_tools` (shared by the MCP server and the in-app
+Copilot) returns the exact same top asset as the dashboard. Data is
+auto-generated on first run if missing, so this works on a fresh clone with
+no setup beyond `pip install -r requirements.txt`.
 
 ## MCP server (Bob / IBM Bob integration)
 

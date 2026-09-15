@@ -111,6 +111,10 @@ exact verification command and what it proves.
    matching the dashboard.
 5. (Optional) Run the MCP verification command in step 4 above and confirm
    the returned numbers match the dashboard for the same region.
+6. (Optional) From `src/backend`, run `pytest` — 5 tests confirm the core
+   claims (compounding sensor+weather risk on the top asset, weather-timed
+   maintenance dates, MCP/dashboard data consistency) are actually true of
+   the code, not just asserted in the docs.
 
 ## Troubleshooting
 

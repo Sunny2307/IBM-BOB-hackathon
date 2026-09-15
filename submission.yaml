@@ -56,7 +56,7 @@ submission:
     frameworks: ["FastAPI", "React", "Vite", "Tailwind CSS"]
     ibm_technologies: ["IBM Bob", "Model Context Protocol (MCP)"]
     databases: []
-    other: ["Uvicorn", "Pydantic", "Recharts", "Playwright (verification)"]
+    other: ["Uvicorn", "Pydantic", "Recharts", "pytest", "Playwright (verification)"]
 
   what_we_are_most_proud_of: >
     The risk engine's explainability: docs/architecture.md and the live
