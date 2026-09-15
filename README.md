@@ -135,7 +135,7 @@ Open **http://localhost:5173** for the app. Interactive API docs at
 - All data is synthetic (deterministic seeded generator, plus a small bounded live-drift simulator) — no real utility dataset was available in the build window
 - Risk scoring is intentionally rule-based/statistical, not a trained ML model — a deliberate explainability and time-budget decision, documented in `docs/solution-overview.md`, and designed to be upgradeable once real failure labels exist
 - No authentication or persistent database in this MVP — data lives in memory for the life of the process
-- Not deployed — runs locally via `docs/setup-guide.md` (see `demo/live-demo-url.txt`)
+- Also runs locally via `docs/setup-guide.md`, in case the free-tier live deploy is asleep/unreachable — see `demo/live-demo-url.txt`
 - The Grid Copilot's LLM path requires a free Groq API key (`GROQ_API_KEY` in `src/backend/.env`); without one it automatically falls back to the original deterministic keyword router, which covers the three core query types (highest risk, why an asset is risky, maintenance plan) but not open-ended follow-ups
 
 ---
