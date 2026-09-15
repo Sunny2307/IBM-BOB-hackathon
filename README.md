@@ -124,7 +124,7 @@ Open **http://localhost:5173** for the app. Interactive API docs at
 | Artifact | Link |
 |---|---|
 | 📹 Demo Video | [See demo/demo-video-link.txt](demo/demo-video-link.txt) |
-| 🌐 Live Demo | [See demo/live-demo-url.txt](demo/live-demo-url.txt) |
+| 🌐 Live Demo | [bob-ai-hackathon-fantsactic-four.vercel.app](https://bob-ai-hackathon-fantsactic-four.vercel.app) |
 | 🖼️ Screenshots | [See demo/screenshots/](demo/screenshots/) |
 | 📊 Presentation | [See presentation/slides.pdf](presentation/) |
 
