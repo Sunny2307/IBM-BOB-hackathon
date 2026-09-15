@@ -4,32 +4,54 @@ import { getMockAsset, getMockRiskBreakdown } from "../api/mockData";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { RiskBadge } from "../components/RiskBadge";
 import { SensorChart } from "../components/SensorChart";
-import { EmptyBlock, ErrorBlock, FallbackBanner, LoadingBlock } from "../components/StatusStates";
+import { LastUpdated } from "../components/LastUpdated";
+import { AssetDetailSkeleton } from "../components/Skeleton";
+import { EmptyBlock, ErrorBlock, FallbackBanner } from "../components/StatusStates";
 import type { RiskTier } from "../api/types";
+
+const POLL_INTERVAL_MS = 30_000;
 
 export function AssetDetail() {
   const { id } = useParams<{ id: string }>();
   const assetId = id ?? "";
 
-  const asset = useAsyncData(() => getAsset(assetId), () => getMockAsset(assetId), [assetId]);
+  const asset = useAsyncData(() => getAsset(assetId), () => getMockAsset(assetId), [assetId], {
+    pollIntervalMs: POLL_INTERVAL_MS,
+  });
   const breakdown = useAsyncData(
     () => getRiskBreakdown(assetId),
     () => getMockRiskBreakdown(assetId),
     [assetId],
+    { pollIntervalMs: POLL_INTERVAL_MS },
   );
 
   const isFallback = asset.isFallback || breakdown.isFallback;
   const isLoading = asset.loading || breakdown.loading;
+  const isRefreshing = asset.isRefreshing || breakdown.isRefreshing;
   const fatalError = !isLoading && (asset.error && !asset.data ? asset.error : null);
+  const lastUpdatedAt =
+    asset.lastUpdatedAt && breakdown.lastUpdatedAt
+      ? Math.min(asset.lastUpdatedAt, breakdown.lastUpdatedAt)
+      : (asset.lastUpdatedAt ?? breakdown.lastUpdatedAt);
+
+  function refreshAll() {
+    asset.refetch();
+    breakdown.refetch();
+  }
 
   return (
     <div className="space-y-6">
-      <Link to="/" className="font-sans text-sm text-carbon-blue-60 hover:underline">
-        &larr; Back to dashboard
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Link to="/" className="font-sans text-sm text-carbon-blue-60 hover:underline">
+          &larr; Back to dashboard
+        </Link>
+        {asset.data && (
+          <LastUpdated timestamp={lastUpdatedAt} isRefreshing={isRefreshing} onRefresh={refreshAll} />
+        )}
+      </div>
 
       {isFallback && <FallbackBanner message={asset.error ?? breakdown.error ?? undefined} />}
-      {isLoading && <LoadingBlock label="Loading asset detail" />}
+      {isLoading && <AssetDetailSkeleton />}
       {fatalError && <ErrorBlock message={fatalError} />}
 
       {!isLoading && !fatalError && !asset.data && (

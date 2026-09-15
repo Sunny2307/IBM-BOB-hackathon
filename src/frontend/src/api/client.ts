@@ -1,5 +1,6 @@
 import type {
   Asset,
+  CopilotHistoryTurn,
   CopilotResponse,
   MaintenancePlan,
   RiskBreakdown,
@@ -56,9 +57,12 @@ export function getMaintenancePlan(): Promise<MaintenancePlan> {
   return request<MaintenancePlan>("/maintenance-plan");
 }
 
-export function askCopilot(question: string): Promise<CopilotResponse> {
+export function askCopilot(
+  question: string,
+  history: CopilotHistoryTurn[] = [],
+): Promise<CopilotResponse> {
   return request<CopilotResponse>("/copilot/ask", {
     method: "POST",
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, history }),
   });
 }

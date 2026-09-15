@@ -96,8 +96,14 @@ class ToolCall(BaseModel):
     args: dict
 
 
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=2000)
+
+
 class CopilotRequest(BaseModel):
     question: str = Field(min_length=1, max_length=500)
+    history: list[ChatMessage] = Field(default_factory=list, max_length=20)
 
 
 class CopilotResponse(BaseModel):

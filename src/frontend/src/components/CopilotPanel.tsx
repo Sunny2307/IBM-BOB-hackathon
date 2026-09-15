@@ -1,7 +1,19 @@
 import { useState, type FormEvent } from "react";
 import { askCopilot, ApiError } from "../api/client";
 import { MOCK_COPILOT_RESPONSE } from "../api/mockData";
-import type { ChatTurn } from "../api/types";
+import type { ChatTurn, CopilotHistoryTurn } from "../api/types";
+import { FormattedAnswer } from "./FormattedAnswer";
+
+// Backend caps CopilotRequest.history at 20 messages (see schemas.py) —
+// each turn becomes 2 messages, so keep at most the last 10 turns.
+const MAX_HISTORY_TURNS = 10;
+
+function toHistory(turns: ChatTurn[]): CopilotHistoryTurn[] {
+  return turns.slice(-MAX_HISTORY_TURNS).flatMap((turn) => [
+    { role: "user" as const, content: turn.question },
+    { role: "assistant" as const, content: turn.answer },
+  ]);
+}
 
 export function CopilotPanel() {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,7 +32,7 @@ export function CopilotPanel() {
     setQuestion("");
 
     try {
-      const response = await askCopilot(trimmed);
+      const response = await askCopilot(trimmed, toHistory(history));
       setHistory((prev) => [
         ...prev,
         { question: trimmed, answer: response.answer, tool_calls: response.tool_calls },
@@ -55,10 +67,19 @@ export function CopilotPanel() {
         Copilot
       </button>
 
+      {/* Backdrop — click to close, fades with the drawer */}
+      <div
+        aria-hidden
+        onClick={() => setIsOpen(false)}
+        className={`fixed inset-0 z-40 bg-carbon-gray-100/30 transition-opacity duration-300 ease-out ${
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
+
       <div
         role="complementary"
         aria-label="Copilot chat panel"
-        className={`fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col border-l border-carbon-gray-30 bg-carbon-gray-10 shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col border-l border-carbon-gray-30 bg-carbon-gray-10 shadow-2xl transition-transform duration-300 ease-in-out will-change-transform ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -89,12 +110,16 @@ export function CopilotPanel() {
 
           {history.map((turn, i) => (
             <div key={i} className="space-y-3">
-              <div className="ml-8 bg-carbon-blue-20 text-carbon-gray-100 px-4 py-3 text-sm shadow-sm">
-                {turn.question}
+              <div className="flex justify-end">
+                <div className="max-w-[85%] break-words rounded-sm bg-carbon-blue-60 px-4 py-3 text-sm text-carbon-white shadow-sm">
+                  {turn.question}
+                </div>
               </div>
 
-              <div className="mr-8 border-l-4 border-carbon-blue-60 bg-carbon-white px-4 py-3 text-sm text-carbon-gray-100 shadow-sm">
-                {turn.answer}
+              <div className="flex justify-start">
+                <div className="max-w-[90%] break-words border-l-4 border-carbon-gray-30 bg-carbon-white px-4 py-3 text-sm text-carbon-gray-100 shadow-sm">
+                  <FormattedAnswer text={turn.answer} />
+                </div>
               </div>
 
               {turn.tool_calls.length > 0 && (

@@ -34,7 +34,13 @@
   /* Signal accent — used sparingly for interactive/live elements */
   --color-signal: var(--color-carbon-blue-60);
 
+  /* Skeleton shimmer surface (loading placeholders) */
+  --color-skeleton-base: #e8e8e8;
+  --color-skeleton-shine: #f4f4f4;
+
   --animate-scan: scan 3s linear infinite;
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+  --animate-page-in: page-in 0.22s ease-out;
 }
 
 @keyframes scan {
@@ -43,6 +49,26 @@
   }
   100% {
     transform: translateY(100%);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -69,6 +95,32 @@
   .font-tabular {
     font-variant-numeric: tabular-nums;
   }
+
+  .skeleton {
+    background-color: var(--color-skeleton-base);
+    background-image: linear-gradient(
+      90deg,
+      var(--color-skeleton-base) 0px,
+      var(--color-skeleton-shine) 40px,
+      var(--color-skeleton-base) 80px
+    );
+    background-size: 800px 100%;
+    animation: var(--animate-shimmer);
+  }
+
+  .page-transition {
+    animation: var(--animate-page-in);
+  }
+
+  /* Leaflet div-icon markers colored by risk tier, with a soft glow halo */
+  .grid-map-marker {
+    display: block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--color-carbon-white);
+    box-shadow: 0 0 0 2px currentColor, 0 0 8px 2px currentColor;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -78,5 +130,10 @@
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+
+  .skeleton {
+    animation: none;
+    background-image: none;
   }
 }

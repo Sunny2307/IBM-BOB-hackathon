@@ -40,13 +40,31 @@ interface FallbackBannerProps {
   message?: string;
 }
 
+/**
+ * Unmissable full-width warning strip shown whenever the UI has fallen back
+ * to local mock data because the live backend could not be reached. Must
+ * never read as "the app is just static" — so this is deliberately loud
+ * (full bleed, high-contrast, icon) rather than a small inline note.
+ */
 export function FallbackBanner({
-  message = "Backend unreachable — showing local demo data.",
+  message = "Backend unreachable — showing cached demo data instead of live grid data.",
 }: FallbackBannerProps) {
   return (
-    <div className="flex items-center gap-3 border-l-4 border-risk-medium bg-carbon-white px-4 py-3 shadow-sm">
-      <span className="h-2 w-2 shrink-0 rounded-full bg-risk-medium" />
-      <span className="font-sans text-sm text-carbon-gray-100"><strong>Demo Data</strong> — {message}</span>
+    <div
+      role="alert"
+      className="flex w-full items-center gap-3 border-l-4 border-risk-medium bg-risk-medium-bg px-4 py-3 shadow-sm"
+    >
+      <span
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-risk-medium text-sm font-bold text-carbon-gray-100"
+        aria-hidden
+      >
+        !
+      </span>
+      <span className="font-sans text-sm text-carbon-gray-100">
+        <strong className="uppercase tracking-wide">Showing cached demo data</strong>
+        <span className="mx-1.5 text-carbon-gray-70">—</span>
+        {message}
+      </span>
     </div>
   );
 }

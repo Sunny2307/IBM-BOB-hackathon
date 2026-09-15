@@ -3,7 +3,8 @@ import { getMaintenancePlan } from "../api/client";
 import { MOCK_MAINTENANCE_PLAN } from "../api/mockData";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { RiskBadge } from "../components/RiskBadge";
-import { EmptyBlock, ErrorBlock, FallbackBanner, LoadingBlock } from "../components/StatusStates";
+import { MaintenancePlanSkeleton } from "../components/Skeleton";
+import { EmptyBlock, ErrorBlock, FallbackBanner } from "../components/StatusStates";
 import type { MaintenanceItem } from "../api/types";
 
 const URGENT_WINDOW_DAYS = 7;
@@ -35,7 +36,7 @@ export function MaintenancePlan() {
       </div>
 
       {isFallback && <FallbackBanner message={error ?? undefined} />}
-      {loading && <LoadingBlock label="Generating maintenance plan" />}
+      {loading && <MaintenancePlanSkeleton />}
       {!loading && error && !isFallback && <ErrorBlock message={error} />}
 
       {!loading && plan && plan.regions.length === 0 && (

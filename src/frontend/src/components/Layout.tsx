@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { CopilotPanel } from "./CopilotPanel";
 
 const NAV_ITEMS = [
@@ -7,6 +7,8 @@ const NAV_ITEMS = [
 ];
 
 export function Layout() {
+  const location = useLocation();
+
   return (
     <div className="min-h-screen bg-carbon-gray-10">
       {/* Carbon UI Shell Header (always dark) */}
@@ -42,7 +44,9 @@ export function Layout() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-8 md:px-8">
-        <Outlet />
+        <div key={location.pathname} className="page-transition">
+          <Outlet />
+        </div>
       </main>
 
       <CopilotPanel />

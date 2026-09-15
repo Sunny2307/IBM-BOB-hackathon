@@ -101,3 +101,9 @@ export interface ChatTurn {
   answer: string;
   tool_calls: ToolCall[];
 }
+
+/** Conversation history shape sent to the LLM-backed /copilot/ask endpoint. */
+export interface CopilotHistoryTurn {
+  role: "user" | "assistant";
+  content: string;
+}

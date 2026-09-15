@@ -7,5 +7,6 @@ router = APIRouter(tags=["copilot"])
 
 
 @router.post("/copilot/ask")
-def ask_copilot(request: CopilotRequest):
-    return copilot_service.ask(request.question)
+async def ask_copilot(request: CopilotRequest):
+    history = [msg.model_dump() for msg in request.history]
+    return await copilot_service.ask(request.question, history=history)

@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import os
 from contextlib import asynccontextmanager
 
@@ -7,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
-from app.services import data_loader
+from app.services import data_loader, live_simulator
 from app.routers import assets, maintenance, copilot
 
 
@@ -15,7 +17,15 @@ from app.routers import assets, maintenance, copilot
 async def lifespan(app: FastAPI):
     count = data_loader.warm_up()
     print(f"[startup] Loaded {count} assets from generated synthetic data.")
-    yield
+
+    live_simulator.tick()  # seed last_updated + one immediate nudge
+    nudger_task = asyncio.create_task(live_simulator.run_forever())
+    try:
+        yield
+    finally:
+        nudger_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await nudger_task
 
 
 app = FastAPI(
@@ -43,4 +53,4 @@ app.include_router(copilot.router)
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "last_updated": live_simulator.get_last_updated()}

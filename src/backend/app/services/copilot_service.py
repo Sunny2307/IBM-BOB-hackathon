@@ -1,18 +1,23 @@
-"""Grid Copilot: a DETERMINISTIC keyword/intent router over the same
-grid_tools functions the MCP server exposes. No LLM call is required for a
-correct answer — this is a deliberate resilience decision so the live demo
-never depends on network access to an LLM provider or a valid API key.
+"""Grid Copilot: `ask()` is the public entry point, and it always has a
+DETERMINISTIC keyword/intent router (`_ask_deterministic`, below) as its
+answer of last resort. No LLM call is required for a correct answer — this is
+a deliberate resilience decision so the live demo never depends on network
+access to an LLM provider or a valid API key.
 
-If an LLM_API_KEY is set (see .env.example), a thin optional layer could
-rephrase the templated answer for polish — but the ANSWER CONTENT always
-comes from real tool calls against real data, never from the LLM alone.
-That optional layer is not implemented in the MVP (Standard time-budget tier
-cuts it) — see known_limitations in docs.
+If LLM_PROVIDER=groq and GROQ_API_KEY is set (see .env.example), `ask()`
+first tries app.services.llm_copilot: a real LLM (Groq's free-tier,
+OpenAI-compatible API) with TOOL CALLING grounded on the exact same
+grid_tools functions the deterministic router and the MCP server use, so it
+can only state facts pulled from real data, never invented ones. On ANY
+failure of that path (missing key, timeout, HTTP error, malformed response),
+`ask()` falls back to `_ask_deterministic` UNCHANGED — this is what keeps the
+"zero dependency on a live API key" guarantee true.
 """
 
+import os
 import re
 
-from app.services import data_loader, grid_tools
+from app.services import data_loader, grid_tools, llm_copilot
 
 TIER_WORDS = ["critical", "high", "medium", "low"]
 
@@ -82,7 +87,29 @@ def _format_plan_answer(plan: dict) -> str:
     return "Top prioritized maintenance actions:\n" + "\n".join(f"- {line}" for line in lines)
 
 
-def ask(question: str) -> dict:
+async def ask(question: str, history: list[dict] | None = None) -> dict:
+    """Public entry point used by the /copilot/ask route.
+
+    Tries the optional Groq tool-calling LLM path first (only when
+    LLM_PROVIDER=groq and GROQ_API_KEY are both set), passing along the
+    conversation history the frontend already tracks. Falls back to the
+    deterministic router on ANY exception from that path, so the app never
+    depends on a live API key to answer correctly.
+    """
+    history = history or []
+    provider = os.getenv("LLM_PROVIDER", "none").lower()
+    api_key = os.getenv("GROQ_API_KEY")
+
+    if provider == "groq" and api_key:
+        try:
+            return await llm_copilot.ask_llm(question, history)
+        except Exception as exc:  # noqa: BLE001 - deliberate: any failure at all falls back
+            print(f"[copilot] LLM path failed ({exc.__class__.__name__}); using deterministic router.")
+
+    return _ask_deterministic(question)
+
+
+def _ask_deterministic(question: str) -> dict:
     q = question.lower().strip()
     tool_calls = []
 
