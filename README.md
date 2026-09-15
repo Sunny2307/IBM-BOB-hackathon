@@ -11,7 +11,7 @@
 | **Team Name** | Fantastic_Four |
 | **Track** | AI |
 | **Team Lead** | Sunny Radadiya — 23ce122@charusat.edu.in |
-| **Members** | Jenil Sutariya (23dcs129@charusat.edu.in), Kaushal Vora (23dcs044@charusat.edu.in), Veer Bhalodiya (23dcs010@charusat.edu.in) |
+| **Members** | Jenil Sutariya (23dcs129@charusat.edu.in), Kaushal Vora (23dcs144@charusat.edu.in), Veer Bhalodiya (23dcs010@charusat.edu.in) |
 
 ---
 
