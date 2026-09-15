@@ -7,53 +7,78 @@
 #   - Do NOT rename this file — the evaluation pipeline reads it by name
 #   - Use double quotes around all string values
 # =============================================================================
+#
+# TODO before final submission: "Grid Failure Advisors" is a working
+# placeholder team name (the real team name was not decided at build time).
+# team.lead was inferred from the session's known email — confirm both are
+# correct, and add any additional teammates to team.members.
+# =============================================================================
 
 team:
-  name: ""                             # REQUIRED — e.g., "Orion Squad"
-  track: ""                            # REQUIRED — one of: AI | DevOps | Sustainability | Open
+  name: "Grid Failure Advisors"
+  track: "AI"
   lead:
-    name: ""                           # REQUIRED — e.g., "Alice Chen"
-    email: ""                          # REQUIRED — e.g., "alice.chen@ibm.com"
+    name: "Malay Sheta"
+    email: "malay.sheta@devxlabs.ai"
   members:
-    - name: ""                         # REQUIRED — Team member 1
-      email: ""
-    - name: ""                         # Add more members by copying the two lines above
-      email: ""
-    - name: ""
-      email: ""
+    - name: "Malay Sheta"
+      email: "malay.sheta@devxlabs.ai"
 
 submission:
-  title: ""                            # REQUIRED — Project display name, e.g., "SmartOps Dashboard"
+  title: "Grid Failure Advisor"
 
-  problem_statement: >                 # REQUIRED — 1-3 sentences. What problem? Who has it?
-    Replace this text with a concise description of the real-world problem
-    your project addresses and who experiences it.
+  problem_statement: >
+    Utilities run calendar-based maintenance on transformers and substations even
+    though sensors already measuring temperature, vibration, partial discharge, and
+    oil quality show failure signatures weeks in advance. Weather forecasts that
+    compound that risk are never combined with sensor data in time to act, so a
+    single major asset failure causes blackouts costing $1M+/hour and stranding
+    tens of thousands of customers.
 
-  solution_summary: >                  # REQUIRED — 1-3 sentences. What did you build?
-    Replace this text with a clear description of your solution
-    and how it addresses the problem above.
+  solution_summary: >
+    Grid Failure Advisor fuses asset sensor telemetry, 7-day weather forecasts, and
+    historical incident records into one explainable composite risk score per
+    asset, ranks assets by grid impact severity, and generates a prioritized
+    maintenance and crew pre-positioning plan timed against incoming severe
+    weather. A Grid Copilot lets an operator — or IBM Bob itself, via a standalone
+    MCP server exposing the same tools — ask natural-language questions answered
+    from real, grounded tool calls, not a hallucinated guess.
 
-  key_features:                        # REQUIRED — List 3 to 5 specific features you implemented
-    - ""                               # e.g., "Real-time pipeline anomaly detection using watsonx.ai"
-    - ""
-    - ""
-    - ""                               # optional 4th
-    - ""                               # optional 5th
+  key_features:
+    - "Explainable composite risk scoring: every point on a 0-100 score is traced to a named factor (sensor anomaly per metric, weather risk, historical incident rate) with a plain-language explanation, not a black-box prediction"
+    - "Sensor anomaly detection across 4 metrics (temperature, vibration, partial discharge, oil quality) using each asset's own 15-day baseline, surfacing degradation signatures before failure"
+    - "Weather-timed maintenance and crew pre-positioning plan that pulls recommended action dates forward ahead of a forecast storm in the asset's region"
+    - "Grid Copilot: a natural-language chat backed by an MCP server — the exact same tool functions are callable independently by IBM Bob or any MCP client, proving the integration is load-bearing, not name-dropped"
+    - "Deterministic copilot routing with zero dependency on a live LLM API key, so the demo never breaks on Wi-Fi or a missing credential"
 
   tech_stack:
-    languages: []                      # REQUIRED — e.g., ["Python", "TypeScript"]
-    frameworks: []                     # e.g., ["FastAPI", "React"]
-    ibm_technologies: []               # e.g., ["watsonx.ai", "IBM Bob", "IBM Cloud Functions"]
-    databases: []                      # e.g., ["PostgreSQL", "Redis"]
-    other: []                          # e.g., ["Docker", "GitHub Actions", "Slack API"]
+    languages: ["Python", "TypeScript"]
+    frameworks: ["FastAPI", "React", "Vite", "Tailwind CSS"]
+    ibm_technologies: ["IBM Bob", "Model Context Protocol (MCP)"]
+    databases: []
+    other: ["Uvicorn", "Pydantic", "Recharts", "Playwright (verification)"]
 
-  what_we_are_most_proud_of: >         # Optional but recommended — guides judges to your best work
-    Replace with what aspect of the submission you consider strongest
-    and want judges to pay special attention to.
+  what_we_are_most_proud_of: >
+    The risk engine's explainability: docs/architecture.md and the live
+    "Why This Score" panel show every point of every asset's score traced to a
+    named, human-readable factor, and the synthetic data is generated so the
+    top-ranked asset always has both a genuine degrading sensor trend AND an
+    upcoming storm in its region — the "weeks in advance, combined with weather"
+    story from the problem statement is verifiably true in the running app, not
+    just claimed. Equally: the MCP server and the in-app Grid Copilot share one
+    implementation (app/services/grid_tools.py), so a judge can independently
+    call get_at_risk_assets over MCP and get the exact numbers the dashboard shows.
 
-  known_limitations: >                 # Optional but recommended — be honest about gaps
-    Replace with any known limitations, incomplete features,
-    or shortcuts taken due to time constraints.
+  known_limitations: >
+    All data is synthetic (deterministic, seeded generator) — no real utility
+    dataset was available in the build window; the risk model is intentionally
+    rule-based/statistical rather than a trained ML model, for explainability and
+    speed under time pressure (documented as an explicit, upgradeable design
+    decision). No map visualization, authentication, or persistent database —
+    data is regenerated JSON/CSV loaded into memory. No live deployment; run
+    locally per docs/setup-guide.md. The Grid Copilot uses a deterministic
+    keyword/intent router rather than a full LLM, by design, so the demo has zero
+    dependency on a live API key.
 
 # =============================================================================
 # ARTIFACT LOCATIONS

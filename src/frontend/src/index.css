@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* Console surface scale */
+  --color-console-950: #030712;
+  --color-console-900: #0b1220;
+  --color-console-850: #0f172a;
+  --color-console-800: #131c2e;
+  --color-console-700: #1e293b;
+  --color-console-600: #334155;
+  --color-console-500: #475569;
+  --color-console-400: #64748b;
+
+  /* Risk tier palette (fixed contract — do not vary) */
+  --color-risk-critical: #ef4444;
+  --color-risk-high: #fb923c;
+  --color-risk-medium: #fcd34d;
+  --color-risk-low: #34d399;
+
+  /* Signal accent — used sparingly for interactive/live elements */
+  --color-signal: #22d3ee;
+
+  --animate-scan: scan 3s linear infinite;
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-console-950 text-slate-100 font-sans antialiased;
+  }
+
+  ::selection {
+    @apply bg-signal/30 text-white;
+  }
+
+  * {
+    scrollbar-color: var(--color-console-600) var(--color-console-900);
+    scrollbar-width: thin;
+  }
+}
+
+@layer utilities {
+  .font-tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,47 +1,13 @@
-# Source Code
+# Source Code — Grid Failure Advisor
 
-Place all your project's source code in this folder.
-
-## Structure Guidelines
-
-Organize your code logically. Here are common patterns — use whatever fits
-your project:
-
-### Web Application
 ```
 src/
-  backend/        ← API server code
-  frontend/       ← UI code
-  shared/         ← Shared utilities/types
+  backend/        FastAPI service (risk engine, maintenance planner, MCP server)
+  frontend/       React (Vite + TS) dashboard, asset detail, maintenance plan, Grid Copilot
 ```
 
-### Data / AI Project
-```
-src/
-  data/           ← Data ingestion / preprocessing
-  models/         ← ML model code
-  api/            ← Serving layer
-  notebooks/      ← Jupyter notebooks (exploration)
-```
+See [`docs/setup-guide.md`](../docs/setup-guide.md) for exact install/run steps for both.
 
-### CLI / Script-based Tool
-```
-src/
-  cli/            ← CLI entry points
-  lib/            ← Core logic
-  utils/          ← Helpers
-```
-
-## Important Files to Include
-
-- `requirements.txt` or `package.json` — dependency manifest
-- `.env.example` — template for environment variables (NEVER commit `.env`)
-- Any database migration files
-- Configuration files
-
-## What NOT to Include in src/
-
-- `.env` files with real secrets
-- Large binary files (use Git LFS or link externally)
-- `node_modules/` or `venv/` (these are in `.gitignore`)
-- Build artifacts (`dist/`, `build/`, `__pycache__/`)
+- `backend/README.md` — backend layout and how to regenerate synthetic data
+- `frontend/README.md` — frontend layout and API contract notes
+- `backend/.env.example`, `frontend/.env.example` — every environment variable used, with dummy/default values. No `.env` file is committed anywhere in this repo.
