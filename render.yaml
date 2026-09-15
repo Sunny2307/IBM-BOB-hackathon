@@ -16,7 +16,7 @@ services:
       # to keep local dev working too, e.g.:
       # http://localhost:5173,https://your-app.vercel.app
       - key: FRONTEND_ORIGIN
-        value: http://localhost:5173
+        value: http://localhost:5173,https://bob-ai-hackathon-fantsactic-four.vercel.app
       - key: LLM_PROVIDER
         value: groq
       - key: GROQ_MODEL
