@@ -11,16 +11,16 @@ interface SensorChartProps {
 
 export function SensorChart({ title, unit, data, badDirection }: SensorChartProps) {
   const degrading = isDegrading(data, badDirection);
-  const lineColor = degrading ? "#ef4444" : "#34d399";
+  const lineColor = degrading ? "#da1e28" : "#24a148";
 
   return (
-    <div className="border border-console-700 bg-console-900 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-mono text-xs font-semibold tracking-widest text-slate-300 uppercase">
-          {title} <span className="text-slate-500 normal-case">({unit})</span>
+    <div className="border border-carbon-gray-20 bg-carbon-white p-4 shadow-sm">
+      <div className="mb-4 flex items-center justify-between border-b border-carbon-gray-20 pb-2">
+        <h3 className="font-sans text-sm font-semibold text-carbon-gray-100">
+          {title} <span className="font-normal text-carbon-gray-70">({unit})</span>
         </h3>
         <span
-          className={`font-mono text-[10px] font-semibold tracking-widest uppercase ${
+          className={`font-sans text-xs font-semibold tracking-wide uppercase ${
             degrading ? "text-risk-critical" : "text-risk-low"
           }`}
         >
@@ -29,7 +29,7 @@ export function SensorChart({ title, unit, data, badDirection }: SensorChartProp
       </div>
 
       {data.length === 0 ? (
-        <div className="flex h-40 items-center justify-center text-xs text-slate-600">
+        <div className="flex h-40 items-center justify-center text-sm text-carbon-gray-60">
           No sensor data
         </div>
       ) : (
@@ -37,20 +37,20 @@ export function SensorChart({ title, unit, data, badDirection }: SensorChartProp
           <AreaChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id={`fill-${title}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={lineColor} stopOpacity={0.35} />
+                <stop offset="0%" stopColor={lineColor} stopOpacity={0.2} />
                 <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#1e293b" strokeDasharray="2 4" vertical={false} />
+            <CartesianGrid stroke="#e0e0e0" strokeDasharray="2 4" vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 10, fill: "#64748b", fontFamily: "JetBrains Mono" }}
+              tick={{ fontSize: 10, fill: "#525252", fontFamily: "IBM Plex Mono" }}
               tickFormatter={(v: string) => v.slice(5)}
-              axisLine={{ stroke: "#334155" }}
+              axisLine={{ stroke: "#c6c6c6" }}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 10, fill: "#64748b", fontFamily: "JetBrains Mono" }}
+              tick={{ fontSize: 10, fill: "#525252", fontFamily: "IBM Plex Mono" }}
               tickFormatter={(v: number) => `${Math.round(v * 10) / 10}`}
               axisLine={false}
               tickLine={false}
@@ -58,13 +58,14 @@ export function SensorChart({ title, unit, data, badDirection }: SensorChartProp
             />
             <Tooltip
               contentStyle={{
-                background: "#0f172a",
-                border: "1px solid #334155",
+                background: "#161616",
+                border: "none",
                 borderRadius: 0,
                 fontSize: 12,
-                fontFamily: "JetBrains Mono",
+                fontFamily: "IBM Plex Sans",
+                color: "#ffffff"
               }}
-              labelStyle={{ color: "#94a3b8" }}
+              labelStyle={{ color: "#c6c6c6", marginBottom: 4 }}
               formatter={(value) => [`${value}${unit}`, title]}
             />
             <Area

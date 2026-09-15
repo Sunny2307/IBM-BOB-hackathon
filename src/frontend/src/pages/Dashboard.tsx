@@ -38,12 +38,12 @@ export function Dashboard() {
   }, [assets, regionFilter, tierFilter, sortDesc]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <h1 className="font-mono text-lg font-bold tracking-widest text-slate-100 uppercase">
+        <h1 className="font-sans text-2xl font-light text-carbon-gray-100">
           Asset Risk Overview
         </h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-carbon-gray-70">
           All monitored grid assets, ranked by predicted failure risk.
         </p>
       </div>
@@ -54,8 +54,9 @@ export function Dashboard() {
       {!loading && error && !isFallback && <ErrorBlock message={error} />}
 
       {!loading && assets && (
-        <>
-          <div className="flex flex-wrap items-center gap-3 border border-console-700 bg-console-900 px-4 py-3">
+        <div className="bg-carbon-white shadow-sm border border-carbon-gray-20">
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center gap-4 bg-carbon-white px-4 py-3 border-b border-carbon-gray-20">
             <FilterSelect
               label="Region"
               value={regionFilter}
@@ -68,53 +69,54 @@ export function Dashboard() {
               onChange={setTierFilter}
               options={["all", ...TIERS]}
             />
-            <div className="ml-auto font-mono text-xs text-slate-500">
-              {rows.length} of {assets.length} assets
+            <div className="ml-auto font-sans text-sm text-carbon-gray-70">
+              <strong>{rows.length}</strong> of {assets.length} items
             </div>
           </div>
 
+          {/* Table */}
           {rows.length === 0 ? (
             <EmptyBlock message="No assets match the current filters." />
           ) : (
-            <div className="overflow-x-auto border border-console-700">
+            <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-console-700 bg-console-900 text-left font-mono text-xs tracking-wide text-slate-400 uppercase">
-                    <th className="px-4 py-2.5 font-medium">Name</th>
-                    <th className="px-4 py-2.5 font-medium">Type</th>
-                    <th className="px-4 py-2.5 font-medium">Region</th>
-                    <th className="px-4 py-2.5 font-medium">Tier</th>
-                    <th className="px-4 py-2.5 font-medium">
+                  <tr className="bg-carbon-gray-10 text-left font-sans text-xs font-semibold text-carbon-gray-100">
+                    <th className="px-4 py-3 border-b border-carbon-gray-20">Name</th>
+                    <th className="px-4 py-3 border-b border-carbon-gray-20">Type</th>
+                    <th className="px-4 py-3 border-b border-carbon-gray-20">Region</th>
+                    <th className="px-4 py-3 border-b border-carbon-gray-20">Tier</th>
+                    <th className="px-4 py-3 border-b border-carbon-gray-20">
                       <button
                         type="button"
                         onClick={() => setSortDesc((v) => !v)}
-                        className="flex items-center gap-1 hover:text-slate-100"
+                        className="flex items-center gap-1 hover:text-carbon-blue-60 transition-colors focus:outline-none focus:ring-2 focus:ring-carbon-blue-60"
                       >
                         Risk Score {sortDesc ? "↓" : "↑"}
                       </button>
                     </th>
-                    <th className="px-4 py-2.5 font-medium">Grid Impact</th>
-                    <th className="px-4 py-2.5 font-medium">Customers</th>
+                    <th className="px-4 py-3 border-b border-carbon-gray-20">Grid Impact</th>
+                    <th className="px-4 py-3 border-b border-carbon-gray-20">Customers</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-carbon-gray-20">
                   {rows.map((asset) => (
                     <tr
                       key={asset.asset_id}
                       onClick={() => navigate(`/assets/${asset.asset_id}`)}
-                      className="cursor-pointer border-b border-console-800 bg-console-950 transition-colors last:border-0 hover:bg-console-900"
+                      className="cursor-pointer bg-carbon-white transition-colors hover:bg-carbon-gray-10"
                     >
-                      <td className="px-4 py-2.5 font-medium text-slate-100">{asset.name}</td>
-                      <td className="px-4 py-2.5 text-slate-400">{asset.type}</td>
-                      <td className="px-4 py-2.5 text-slate-400">{asset.region}</td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-3 font-medium text-carbon-blue-70">{asset.name}</td>
+                      <td className="px-4 py-3 text-carbon-gray-90">{asset.type}</td>
+                      <td className="px-4 py-3 text-carbon-gray-90">{asset.region}</td>
+                      <td className="px-4 py-3">
                         <RiskBadge tier={asset.risk_tier} size="sm" />
                       </td>
-                      <td className="px-4 py-2.5 font-mono font-tabular text-slate-100">
+                      <td className="px-4 py-3 font-mono font-tabular text-carbon-gray-100 font-medium">
                         {asset.risk_score}
                       </td>
-                      <td className="px-4 py-2.5 text-slate-400">{asset.grid_impact_severity}</td>
-                      <td className="px-4 py-2.5 font-mono font-tabular text-slate-400">
+                      <td className="px-4 py-3 text-carbon-gray-90">{asset.grid_impact_severity}</td>
+                      <td className="px-4 py-3 font-mono font-tabular text-carbon-gray-90">
                         {asset.customers_served.toLocaleString()}
                       </td>
                     </tr>
@@ -123,7 +125,7 @@ export function Dashboard() {
               </table>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
@@ -138,12 +140,12 @@ interface FilterSelectProps {
 
 function FilterSelect({ label, value, onChange, options }: FilterSelectProps) {
   return (
-    <label className="flex items-center gap-2 font-mono text-xs text-slate-400">
+    <label className="flex items-center gap-2 font-sans text-sm text-carbon-gray-70">
       {label}
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border border-console-600 bg-console-950 px-2 py-1 text-slate-100 focus:border-signal focus:outline-none"
+        className="border-b border-carbon-gray-60 bg-carbon-white px-2 py-1.5 text-sm text-carbon-gray-100 focus:border-carbon-blue-60 focus:outline-none focus:ring-0 cursor-pointer hover:bg-carbon-gray-10 transition-colors min-w-[120px]"
       >
         {options.map((opt) => (
           <option key={opt} value={opt}>

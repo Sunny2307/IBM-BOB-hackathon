@@ -4,9 +4,9 @@ interface LoadingBlockProps {
 
 export function LoadingBlock({ label = "Loading" }: LoadingBlockProps) {
   return (
-    <div className="flex items-center gap-3 border border-console-700 bg-console-900 px-4 py-6 text-sm text-slate-400">
-      <span className="h-2 w-2 animate-pulse bg-signal" />
-      <span className="font-mono tracking-wide">{label}…</span>
+    <div className="flex items-center gap-3 border-l-4 border-carbon-blue-60 bg-carbon-white px-4 py-6 shadow-sm">
+      <span className="h-2 w-2 animate-pulse rounded-full bg-carbon-blue-60" />
+      <span className="font-sans text-sm font-medium text-carbon-gray-100">{label}…</span>
     </div>
   );
 }
@@ -17,7 +17,7 @@ interface EmptyBlockProps {
 
 export function EmptyBlock({ message }: EmptyBlockProps) {
   return (
-    <div className="border border-dashed border-console-700 bg-console-900 px-4 py-10 text-center text-sm text-slate-400">
+    <div className="border border-carbon-gray-20 bg-carbon-white px-4 py-10 text-center text-sm text-carbon-gray-70 shadow-sm">
       {message}
     </div>
   );
@@ -29,9 +29,9 @@ interface ErrorBlockProps {
 
 export function ErrorBlock({ message }: ErrorBlockProps) {
   return (
-    <div className="border border-risk-critical/40 bg-risk-critical/5 px-4 py-6 text-sm text-slate-200">
-      <p className="font-mono font-semibold text-risk-critical">CONNECTION FAILED</p>
-      <p className="mt-1 text-slate-400">{message}</p>
+    <div className="border-l-4 border-risk-critical bg-carbon-white px-4 py-4 shadow-sm">
+      <p className="font-sans text-sm font-bold text-carbon-gray-100">Connection Failed</p>
+      <p className="mt-1 text-sm text-carbon-gray-70">{message}</p>
     </div>
   );
 }
@@ -44,9 +44,9 @@ export function FallbackBanner({
   message = "Backend unreachable — showing local demo data.",
 }: FallbackBannerProps) {
   return (
-    <div className="flex items-center gap-2 border border-risk-medium/40 bg-risk-medium/10 px-3 py-2 text-xs text-risk-medium">
-      <span className="h-1.5 w-1.5 shrink-0 bg-risk-medium" />
-      <span className="font-mono tracking-wide">DEMO DATA — {message}</span>
+    <div className="flex items-center gap-3 border-l-4 border-risk-medium bg-carbon-white px-4 py-3 shadow-sm">
+      <span className="h-2 w-2 shrink-0 rounded-full bg-risk-medium" />
+      <span className="font-sans text-sm text-carbon-gray-100"><strong>Demo Data</strong> — {message}</span>
     </div>
   );
 }

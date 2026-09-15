@@ -86,6 +86,16 @@ def ask(question: str) -> dict:
     q = question.lower().strip()
     tool_calls = []
 
+    if q in {"hello", "hi", "hey"} or q.startswith(("good morning", "good afternoon")):
+        return {
+            "answer": (
+                "Grid Copilot online. I can check highest-risk assets, explain an asset score, "
+                "or build a maintenance plan."
+            ),
+            "tool_calls": [],
+            "data": None,
+        }
+
     is_explain = any(w in q for w in ["why", "explain", "breakdown", "reason"])
     asset_id = _find_asset_id(question) if is_explain or "ast-" in q else None
 
@@ -112,12 +122,12 @@ def ask(question: str) -> dict:
         answer = _format_at_risk_answer(result)
         return {"answer": answer, "tool_calls": tool_calls, "data": result}
 
-    # Fallback: general overview + guidance
-    result = grid_tools.get_at_risk_assets(min_tier="High", limit=5)
-    tool_calls.append({"tool": "get_at_risk_assets", "args": {"region": None, "min_tier": "High", "limit": 5}})
-    overview = _format_at_risk_answer(result)
-    guidance = (
-        "\n\nI can answer questions like: 'which assets are highest risk near <region>?', "
-        "'why is AST-014 high risk?', or 'what's the maintenance plan for <region>?'"
-    )
-    return {"answer": overview + guidance, "tool_calls": tool_calls, "data": result}
+    return {
+        "answer": (
+            f"I couldn't identify a grid operation in '{question}'. "
+            "Try asking which assets are highest risk, why an asset is risky, "
+            "or what the maintenance plan is for a region."
+        ),
+        "tool_calls": [],
+        "data": None,
+    }

@@ -8,30 +8,29 @@ const NAV_ITEMS = [
 
 export function Layout() {
   return (
-    <div className="min-h-screen bg-console-950">
-      <header className="sticky top-0 z-30 border-b border-console-700 bg-console-900">
-        <div className="flex h-14 items-center justify-between px-4 md:px-8">
+    <div className="min-h-screen bg-carbon-gray-10">
+      {/* Carbon UI Shell Header (always dark) */}
+      <header className="sticky top-0 z-30 bg-carbon-gray-100 border-b border-carbon-gray-90">
+        <div className="flex h-12 items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <span className="h-2.5 w-2.5 shrink-0 bg-signal" aria-hidden />
-            <span className="font-mono text-sm font-bold tracking-[0.15em] text-slate-100 uppercase">
+            {/* Minimalist IBM-style logo mark */}
+            <span className="h-3 w-3 shrink-0 bg-carbon-blue-60" aria-hidden />
+            <span className="font-sans text-sm font-semibold tracking-wide text-carbon-white">
               Grid Failure Advisor
-            </span>
-            <span className="hidden font-mono text-xs text-slate-500 sm:inline">
-              / control console
             </span>
           </div>
 
-          <nav className="flex items-center gap-1">
+          <nav className="flex h-full items-center">
             {NAV_ITEMS.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `border px-3 py-1.5 font-mono text-xs tracking-wide uppercase transition-colors ${
+                  `flex h-full items-center px-4 font-sans text-sm transition-colors ${
                     isActive
-                      ? "border-signal/60 bg-signal/10 text-signal"
-                      : "border-transparent text-slate-400 hover:border-console-600 hover:text-slate-100"
+                      ? "border-b-2 border-carbon-blue-60 text-carbon-white bg-carbon-gray-90"
+                      : "border-b-2 border-transparent text-carbon-gray-30 hover:text-carbon-white hover:bg-carbon-gray-90"
                   }`
                 }
               >
@@ -42,7 +41,7 @@ export function Layout() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">
+      <main className="mx-auto max-w-7xl px-4 py-8 md:px-8">
         <Outlet />
       </main>
 

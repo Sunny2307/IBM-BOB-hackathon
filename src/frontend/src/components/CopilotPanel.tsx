@@ -47,7 +47,7 @@ export function CopilotPanel() {
         type="button"
         onClick={() => setIsOpen(true)}
         aria-label="Open copilot panel"
-        className={`fixed top-1/2 right-0 z-40 -translate-y-1/2 border border-r-0 border-signal/50 bg-console-900 px-2 py-4 font-mono text-xs tracking-[0.2em] text-signal uppercase transition-transform hover:bg-console-800 ${
+        className={`fixed top-1/2 right-0 z-40 -translate-y-1/2 border border-r-0 border-carbon-gray-30 bg-carbon-white px-2 py-4 font-sans text-xs tracking-wider text-carbon-blue-60 uppercase transition-transform hover:bg-carbon-gray-10 shadow-sm ${
           isOpen ? "translate-x-full" : "translate-x-0"
         }`}
         style={{ writingMode: "vertical-rl" }}
@@ -58,14 +58,14 @@ export function CopilotPanel() {
       <div
         role="complementary"
         aria-label="Copilot chat panel"
-        className={`fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col border-l border-console-700 bg-console-900 shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col border-l border-carbon-gray-30 bg-carbon-gray-10 shadow-2xl transition-transform duration-300 ease-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <header className="flex items-center justify-between border-b border-console-700 bg-console-850 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 animate-pulse bg-signal" />
-            <h2 className="font-mono text-sm font-semibold tracking-widest text-slate-100 uppercase">
+        <header className="flex items-center justify-between border-b border-carbon-gray-30 bg-carbon-white px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-carbon-blue-60" />
+            <h2 className="font-sans text-sm font-semibold text-carbon-gray-100">
               Grid Copilot
             </h2>
           </div>
@@ -73,39 +73,41 @@ export function CopilotPanel() {
             type="button"
             onClick={() => setIsOpen(false)}
             aria-label="Close copilot panel"
-            className="text-slate-400 hover:text-slate-100"
+            className="text-carbon-gray-60 hover:text-carbon-gray-100 transition-colors"
           >
             ✕
           </button>
         </header>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+        <div className="flex-1 space-y-6 overflow-y-auto px-4 py-6">
           {history.length === 0 && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-carbon-gray-70 bg-carbon-white p-4 border-l-4 border-carbon-gray-30 shadow-sm">
               Ask about at-risk assets, maintenance priorities, or weather-driven urgency.
               Answers are grounded in live backend/MCP tool calls.
             </p>
           )}
 
           {history.map((turn, i) => (
-            <div key={i} className="space-y-2">
-              <div className="ml-6 border border-console-700 bg-console-800 px-3 py-2 text-sm text-slate-200">
+            <div key={i} className="space-y-3">
+              <div className="ml-8 bg-carbon-blue-20 text-carbon-gray-100 px-4 py-3 text-sm shadow-sm">
                 {turn.question}
               </div>
 
-              <div className="border-l-2 border-signal bg-console-850 px-3 py-2 text-sm text-slate-100">
+              <div className="mr-8 border-l-4 border-carbon-blue-60 bg-carbon-white px-4 py-3 text-sm text-carbon-gray-100 shadow-sm">
                 {turn.answer}
               </div>
 
               {turn.tool_calls.length > 0 && (
-                <details className="border border-console-700 bg-console-900 px-3 py-2 text-xs text-slate-400">
-                  <summary className="cursor-pointer font-mono text-signal">
+                <details className="mr-8 border border-carbon-gray-20 bg-carbon-white px-4 py-3 text-xs text-carbon-gray-70">
+                  <summary className="cursor-pointer font-sans font-medium text-carbon-blue-60">
                     Tools called ({turn.tool_calls.length})
                   </summary>
-                  <ul className="mt-2 space-y-1 font-mono">
+                  <ul className="mt-3 space-y-2 font-mono">
                     {turn.tool_calls.map((call, j) => (
-                      <li key={j} className="break-all">
-                        {call.tool}({JSON.stringify(call.args)})
+                      <li key={j} className="break-all text-[10px]">
+                        <span className="font-bold text-carbon-gray-90">{call.tool}</span>
+                        <br/>
+                        {JSON.stringify(call.args)}
                       </li>
                     ))}
                   </ul>
@@ -115,26 +117,26 @@ export function CopilotPanel() {
           ))}
 
           {isSending && (
-            <div className="border-l-2 border-console-600 bg-console-850 px-3 py-2 text-sm text-slate-500">
+            <div className="mr-8 border-l-4 border-carbon-gray-30 bg-carbon-white px-4 py-3 text-sm text-carbon-gray-60 shadow-sm">
               <span className="animate-pulse">Thinking…</span>
             </div>
           )}
 
-          {sendError && <p className="text-xs text-risk-medium">{sendError}</p>}
+          {sendError && <p className="text-xs text-risk-medium font-medium">{sendError}</p>}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex border-t border-console-700">
+        <form onSubmit={handleSubmit} className="flex border-t border-carbon-gray-30 bg-carbon-white">
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="Ask the grid copilot…"
-            className="flex-1 bg-console-900 px-3 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none"
+            className="flex-1 bg-transparent px-4 py-4 text-sm text-carbon-gray-100 placeholder:text-carbon-gray-60 focus:outline-none"
           />
           <button
             type="submit"
             disabled={isSending || !question.trim()}
-            className="bg-signal px-4 text-sm font-semibold text-console-950 disabled:cursor-not-allowed disabled:bg-console-700 disabled:text-slate-500"
+            className="bg-carbon-blue-60 px-6 text-sm font-semibold text-carbon-white transition-colors hover:bg-carbon-blue-70 disabled:cursor-not-allowed disabled:bg-carbon-gray-20 disabled:text-carbon-gray-60"
           >
             Send
           </button>
