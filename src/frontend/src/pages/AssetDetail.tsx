@@ -4,14 +4,32 @@ import { getMockAsset, getMockRiskBreakdown } from "../api/mockData";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { RiskBadge } from "../components/RiskBadge";
 import { SensorChart } from "../components/SensorChart";
-import { EmptyBlock, ErrorBlock, FallbackBanner, LoadingBlock } from "../components/StatusStates";
+import {
+  EmptyBlock,
+  ErrorBlock,
+  FallbackBanner,
+  LoadingBlock,
+} from "../components/StatusStates";
 import type { RiskTier } from "../api/types";
+
+const TIER_COLOR: Record<RiskTier, string> = {
+  Critical: "var(--color-risk-critical)",
+  High:     "var(--color-risk-high)",
+  Medium:   "var(--color-risk-medium)",
+  Low:      "var(--color-risk-low)",
+};
+
+/* ─────────────────────────────────────────────────────── */
 
 export function AssetDetail() {
   const { id } = useParams<{ id: string }>();
   const assetId = id ?? "";
 
-  const asset = useAsyncData(() => getAsset(assetId), () => getMockAsset(assetId), [assetId]);
+  const asset = useAsyncData(
+    () => getAsset(assetId),
+    () => getMockAsset(assetId),
+    [assetId],
+  );
   const breakdown = useAsyncData(
     () => getRiskBreakdown(assetId),
     () => getMockRiskBreakdown(assetId),
@@ -20,15 +38,32 @@ export function AssetDetail() {
 
   const isFallback = asset.isFallback || breakdown.isFallback;
   const isLoading = asset.loading || breakdown.loading;
-  const fatalError = !isLoading && (asset.error && !asset.data ? asset.error : null);
+  const fatalError =
+    !isLoading && (asset.error && !asset.data ? asset.error : null);
 
   return (
-    <div className="space-y-6">
-      <Link to="/" className="font-sans text-sm text-carbon-blue-60 hover:underline">
-        &larr; Back to dashboard
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Back link */}
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1.5 font-sans text-sm font-medium transition-colors"
+        style={{ color: "var(--color-text-secondary)" }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLAnchorElement).style.color =
+            "var(--color-accent)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLAnchorElement).style.color =
+            "var(--color-text-secondary)";
+        }}
+      >
+        <span aria-hidden="true">←</span> Back to dashboard
       </Link>
 
-      {isFallback && <FallbackBanner message={asset.error ?? breakdown.error ?? undefined} />}
+      {/* Status banners */}
+      {isFallback && (
+        <FallbackBanner message={asset.error ?? breakdown.error ?? undefined} />
+      )}
       {isLoading && <LoadingBlock label="Loading asset detail" />}
       {fatalError && <ErrorBlock message={fatalError} />}
 
@@ -55,7 +90,10 @@ export function AssetDetail() {
               <WhyThisScore components={breakdown.data.components} />
 
               <section>
-                <h2 className="mb-4 font-sans text-lg font-light text-carbon-gray-100">
+                <h2
+                  className="mb-4 font-sans text-base font-semibold"
+                  style={{ color: "var(--color-text-primary)" }}
+                >
                   Sensor Trends
                 </h2>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -98,6 +136,7 @@ export function AssetDetail() {
   );
 }
 
+/* ── Asset header card ──────────────────────────────── */
 interface AssetHeaderProps {
   name: string;
   type: string;
@@ -120,35 +159,97 @@ function AssetHeader(props: AssetHeaderProps) {
     ["Grid Impact", `${props.gridImpact}/10`],
   ];
 
+  const accentColor = TIER_COLOR[props.riskTier];
+
   return (
-    <header className="bg-carbon-white p-6 shadow-sm border border-carbon-gray-20">
-      <div className="flex flex-wrap items-start justify-between gap-6">
-        <div>
-          <h1 className="font-sans text-2xl font-semibold text-carbon-gray-100">{props.name}</h1>
-          <div className="mt-6 grid grid-cols-2 gap-x-12 gap-y-4 sm:grid-cols-3">
+    <header
+      className="overflow-hidden rounded-sm"
+      style={{
+        backgroundColor: "var(--color-surface-1)",
+        border: "1px solid var(--color-border-subtle)",
+        borderTop: `3px solid ${accentColor}`,
+      }}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-8 p-6">
+        {/* Left: name + stat tiles */}
+        <div className="flex-1 min-w-0">
+          <h1
+            className="font-sans text-2xl font-bold leading-tight"
+            style={{ color: "var(--color-text-primary)" }}
+          >
+            {props.name}
+          </h1>
+
+          <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {fields.map(([label, value]) => (
-              <div key={label}>
-                <dt className="font-sans text-xs text-carbon-gray-70">
+              <div
+                key={label}
+                className="rounded-sm px-3 py-2.5"
+                style={{
+                  backgroundColor: "var(--color-surface-2)",
+                  border: "1px solid var(--color-border-subtle)",
+                }}
+              >
+                <dt
+                  className="font-sans text-[10px] font-semibold uppercase tracking-widest"
+                  style={{ color: "var(--color-text-tertiary)" }}
+                >
                   {label}
                 </dt>
-                <dd className="font-sans text-sm font-medium text-carbon-gray-100 mt-1">{value}</dd>
+                <dd
+                  className="mt-1 font-sans text-sm font-semibold"
+                  style={{ color: "var(--color-text-primary)" }}
+                >
+                  {value}
+                </dd>
               </div>
             ))}
-          </div>
+          </dl>
         </div>
 
-        <div className="flex flex-col items-end gap-3 border-l border-carbon-gray-20 pl-6">
-          <RiskBadge tier={props.riskTier} size="lg" />
-          <div className="font-sans text-4xl font-light text-carbon-gray-100">
+        {/* Right: risk score — Focal Point law — dominant element */}
+        <div
+          className="flex shrink-0 flex-col items-center gap-3 rounded-sm px-6 py-5"
+          style={{
+            backgroundColor: "var(--color-surface-2)",
+            border: `1px solid ${accentColor}`,
+            borderRadius: "2px",
+            minWidth: 140,
+          }}
+        >
+          <span
+            className="font-sans text-[10px] font-semibold uppercase tracking-widest"
+            style={{ color: "var(--color-text-tertiary)" }}
+          >
+            Risk Score
+          </span>
+
+          <div
+            className="font-mono font-bold font-tabular leading-none"
+            style={{
+              fontSize: "3.5rem",
+              color: accentColor,
+              lineHeight: 1,
+            }}
+            aria-label={`Risk score: ${props.riskScore} out of 100`}
+          >
             {props.riskScore}
-            <span className="text-xl text-carbon-gray-60">/100</span>
+            <span
+              className="font-sans font-normal"
+              style={{ fontSize: "1.25rem", color: "var(--color-text-tertiary)" }}
+            >
+              /100
+            </span>
           </div>
+
+          <RiskBadge tier={props.riskTier} size="lg" />
         </div>
       </div>
     </header>
   );
 }
 
+/* ── Why This Score — animated contribution bars ─────── */
 interface WhyThisScoreProps {
   components: { factor: string; contribution: number; explanation: string }[];
 }
@@ -157,29 +258,74 @@ function WhyThisScore({ components }: WhyThisScoreProps) {
   if (components.length === 0) return null;
 
   const sorted = [...components].sort((a, b) => b.contribution - a.contribution);
+  const maxContribution = sorted[0]?.contribution ?? 1;
 
   return (
-    <section className="border-l-4 border-carbon-blue-60 bg-carbon-white p-6 shadow-sm">
-      <h2 className="mb-4 font-sans text-lg font-light text-carbon-gray-100">
+    <section
+      className="rounded-sm p-6"
+      style={{
+        backgroundColor: "var(--color-surface-1)",
+        border: "1px solid var(--color-border-subtle)",
+        borderLeft: "3px solid var(--color-accent)",
+      }}
+    >
+      <h2
+        className="mb-5 font-sans text-base font-semibold"
+        style={{ color: "var(--color-text-primary)" }}
+      >
         Why This Score
       </h2>
-      <ul className="space-y-4">
-        {sorted.map((c) => (
-          <li key={c.factor} className="flex gap-4">
-            <span className="w-16 shrink-0 font-sans text-sm font-medium text-carbon-blue-60">
-              +{c.contribution} pts
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-carbon-gray-100">{c.factor}</p>
-              <p className="text-sm text-carbon-gray-70 mt-0.5">{c.explanation}</p>
-            </div>
-          </li>
-        ))}
+      <ul className="space-y-5">
+        {sorted.map((c) => {
+          const pct = (c.contribution / maxContribution) * 100;
+          return (
+            <li key={c.factor}>
+              <div className="mb-1.5 flex items-baseline justify-between gap-4">
+                <span
+                  className="font-sans text-sm font-semibold"
+                  style={{ color: "var(--color-text-primary)" }}
+                >
+                  {c.factor}
+                </span>
+                <span
+                  className="font-mono text-sm font-bold font-tabular shrink-0"
+                  style={{ color: "var(--color-accent)" }}
+                >
+                  +{c.contribution} pts
+                </span>
+              </div>
+
+              {/* Animated bar */}
+              <div
+                className="mb-2 h-1.5 w-full overflow-hidden rounded-full"
+                style={{ backgroundColor: "var(--color-surface-3)" }}
+                aria-hidden="true"
+              >
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${pct}%`,
+                    backgroundColor: "var(--color-accent)",
+                    transition: "width 700ms ease-out",
+                  }}
+                />
+              </div>
+
+              <p
+                className="font-sans text-xs"
+                style={{ color: "var(--color-text-secondary)" }}
+              >
+                {c.explanation}
+              </p>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
 }
 
+/* ── Weather panel ──────────────────────────────────── */
 interface WeatherPanelProps {
   region: string;
   forecast: {
@@ -194,37 +340,66 @@ interface WeatherPanelProps {
 function WeatherPanel({ region, forecast }: WeatherPanelProps) {
   return (
     <section>
-      <h2 className="mb-4 font-sans text-lg font-light text-carbon-gray-100">
-        7-Day Weather Context — {region}
+      <h2
+        className="mb-4 font-sans text-base font-semibold"
+        style={{ color: "var(--color-text-primary)" }}
+      >
+        7-Day Weather Context —{" "}
+        <span style={{ color: "var(--color-text-secondary)", fontWeight: 400 }}>
+          {region}
+        </span>
       </h2>
+
       {forecast.length === 0 ? (
         <EmptyBlock message="No forecast data available." />
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {forecast.map((day) => (
             <div
               key={day.date}
-              className={`p-4 bg-carbon-white shadow-sm border ${
-                day.storm_warning
-                  ? "border-risk-critical"
-                  : "border-carbon-gray-20"
-              }`}
+              className="rounded-sm p-4"
+              style={{
+                backgroundColor: day.storm_warning
+                  ? "var(--color-risk-critical-dim)"
+                  : "var(--color-surface-1)",
+                border: day.storm_warning
+                  ? "1px solid rgba(255 77 79 / 0.4)"
+                  : "1px solid var(--color-border-subtle)",
+                borderTop: day.storm_warning
+                  ? "2px solid var(--color-risk-critical)"
+                  : "1px solid var(--color-border-subtle)",
+              }}
             >
-              <p className="font-sans text-xs font-semibold text-carbon-gray-70 uppercase">
+              <p
+                className="font-sans text-[10px] font-semibold uppercase tracking-wider"
+                style={{ color: "var(--color-text-tertiary)" }}
+              >
                 {day.date.slice(5)}
               </p>
-              <p className="mt-2 font-sans text-xl font-light text-carbon-gray-100">
-                {day.temp_high_f}°F
+              <p
+                className="mt-2 font-mono text-xl font-bold font-tabular"
+                style={{ color: "var(--color-text-primary)" }}
+              >
+                {day.temp_high_f}°
               </p>
-              <p className="mt-2 font-sans text-xs text-carbon-gray-70">
+              <p
+                className="mt-2 font-sans text-[11px]"
+                style={{ color: "var(--color-text-secondary)" }}
+              >
                 Wind {day.wind_speed_mph} mph
               </p>
-              <p className="font-sans text-xs text-carbon-gray-70">
+              <p
+                className="font-sans text-[11px]"
+                style={{ color: "var(--color-text-secondary)" }}
+              >
                 Precip {Math.round(day.precip_probability * 100)}%
               </p>
               {day.storm_warning && (
-                <p className="mt-2 font-sans text-xs font-bold text-risk-critical">
-                  Storm Warning
+                <p
+                  className="mt-2 font-sans text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: "var(--color-risk-critical)" }}
+                >
+                  ⚡ Storm
                 </p>
               )}
             </div>

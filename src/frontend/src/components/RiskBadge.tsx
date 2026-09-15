@@ -1,16 +1,33 @@
 import type { RiskTier } from "../api/types";
 
-const TIER_CLASSES: Record<RiskTier, string> = {
-  Critical: "text-risk-critical bg-risk-critical-bg",
-  High: "text-risk-high bg-risk-high-bg",
-  Medium: "text-risk-medium bg-risk-medium-bg",
-  Low: "text-risk-low bg-risk-low-bg",
+/* ─── Color tokens per tier ──────────────────────────── */
+const TIER_COLOR: Record<RiskTier, { text: string; bg: string; border: string }> = {
+  Critical: {
+    text: "var(--color-risk-critical)",
+    bg:   "var(--color-risk-critical-dim)",
+    border: "var(--color-risk-critical)",
+  },
+  High: {
+    text: "var(--color-risk-high)",
+    bg:   "var(--color-risk-high-dim)",
+    border: "var(--color-risk-high)",
+  },
+  Medium: {
+    text: "var(--color-risk-medium)",
+    bg:   "var(--color-risk-medium-dim)",
+    border: "var(--color-risk-medium)",
+  },
+  Low: {
+    text: "var(--color-risk-low)",
+    bg:   "var(--color-risk-low-dim)",
+    border: "var(--color-risk-low)",
+  },
 };
 
 const SIZE_CLASSES = {
-  sm: "px-2 py-0.5 text-[10px]",
-  md: "px-2 py-0.5 text-xs",
-  lg: "px-3 py-1 text-sm",
+  sm: { px: "6px 8px", fontSize: "10px" },
+  md: { px: "6px 10px", fontSize: "11px" },
+  lg: { px: "6px 12px", fontSize: "13px" },
 };
 
 interface RiskBadgeProps {
@@ -19,11 +36,49 @@ interface RiskBadgeProps {
 }
 
 export function RiskBadge({ tier, size = "md" }: RiskBadgeProps) {
+  const c = TIER_COLOR[tier];
+  const s = SIZE_CLASSES[size];
+  const isCritical = tier === "Critical";
+
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full font-sans font-medium tracking-wide ${TIER_CLASSES[tier]} ${SIZE_CLASSES[size]}`}
+      className="inline-flex items-center gap-1.5 font-sans font-semibold tracking-wide"
+      style={{
+        color: c.text,
+        backgroundColor: c.bg,
+        border: `1px solid ${c.border}`,
+        borderRadius: "2px",
+        padding: s.px,
+        fontSize: s.fontSize,
+        letterSpacing: "0.04em",
+        textTransform: "uppercase",
+        whiteSpace: "nowrap",
+      }}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {/* Dot indicator — pulsing ring for Critical only (Von Restorff) */}
+      <span
+        className="relative flex shrink-0 items-center justify-center"
+        style={{ width: 8, height: 8 }}
+        aria-hidden="true"
+      >
+        {/* Static solid dot */}
+        <span
+          className="absolute rounded-full"
+          style={{ width: 5, height: 5, backgroundColor: c.text }}
+        />
+        {/* Pulse ring for Critical */}
+        {isCritical && (
+          <span
+            className="absolute rounded-full"
+            style={{
+              width: 8,
+              height: 8,
+              border: `1.5px solid ${c.text}`,
+              animation: "var(--animate-pulse-ring)",
+            }}
+          />
+        )}
+      </span>
       {tier}
     </span>
   );

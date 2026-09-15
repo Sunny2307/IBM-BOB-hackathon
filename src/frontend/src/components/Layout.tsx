@@ -6,33 +6,78 @@ const NAV_ITEMS = [
   { to: "/maintenance-plan", label: "Maintenance Plan", end: false },
 ];
 
+/** IBM-style 3×4 dot-grid logo mark */
+function LogoMark() {
+  return (
+    <svg
+      width="20"
+      height="16"
+      viewBox="0 0 20 16"
+      fill="none"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      {[0, 1, 2].map((col) =>
+        [0, 1, 2, 3].map((row) => (
+          <rect
+            key={`${col}-${row}`}
+            x={col * 8}
+            y={row * 4}
+            width={5}
+            height={2}
+            rx={0.5}
+            fill={col === 0 ? "#0f62fe" : "rgba(255,255,255,0.7)"}
+          />
+        )),
+      )}
+    </svg>
+  );
+}
+
 export function Layout() {
   return (
-    <div className="min-h-screen bg-carbon-gray-10">
-      {/* Carbon UI Shell Header (always dark) */}
-      <header className="sticky top-0 z-30 bg-carbon-gray-100 border-b border-carbon-gray-90">
-        <div className="flex h-12 items-center justify-between px-4">
+    <div
+      className="min-h-screen"
+      style={{ backgroundColor: "var(--color-surface-base)" }}
+    >
+      {/* ── Header ─────────────────────────────────────────── */}
+      <header
+        className="sticky top-0 z-30"
+        style={{
+          backgroundColor: "hsl(220 15% 8%)",
+          borderBottom: "1px solid var(--color-border-subtle)",
+        }}
+      >
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 md:px-8">
+          {/* Brand */}
           <div className="flex items-center gap-3">
-            {/* Minimalist IBM-style logo mark */}
-            <span className="h-3 w-3 shrink-0 bg-carbon-blue-60" aria-hidden />
-            <span className="font-sans text-sm font-semibold tracking-wide text-carbon-white">
+            <LogoMark />
+            <span
+              className="font-sans text-sm font-semibold tracking-wide"
+              style={{ color: "var(--color-text-primary)" }}
+            >
               Grid Failure Advisor
             </span>
           </div>
 
-          <nav className="flex h-full items-center">
+          {/* Nav */}
+          <nav className="flex h-full items-center" aria-label="Main navigation">
             {NAV_ITEMS.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex h-full items-center px-4 font-sans text-sm transition-colors ${
+                  `flex h-full items-center px-5 font-sans text-sm font-medium transition-colors duration-150 border-b-2 ${
                     isActive
-                      ? "border-b-2 border-carbon-blue-60 text-carbon-white bg-carbon-gray-90"
-                      : "border-b-2 border-transparent text-carbon-gray-30 hover:text-carbon-white hover:bg-carbon-gray-90"
+                      ? "border-[#0f62fe] text-white"
+                      : "border-transparent hover:border-white/20 hover:text-white"
                   }`
                 }
+                style={({ isActive }) => ({
+                  color: isActive ? "#fff" : "var(--color-text-secondary)",
+                  backgroundColor: "transparent",
+                })}
               >
                 {item.label}
               </NavLink>
@@ -41,6 +86,7 @@ export function Layout() {
         </div>
       </header>
 
+      {/* ── Main content ───────────────────────────────────── */}
       <main className="mx-auto max-w-7xl px-4 py-8 md:px-8">
         <Outlet />
       </main>

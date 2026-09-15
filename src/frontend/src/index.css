@@ -4,72 +4,156 @@
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
 
-  /* Carbon Grayscale (Light theme focused) */
-  --color-carbon-white: #ffffff;
-  --color-carbon-gray-10: #f4f4f4;
-  --color-carbon-gray-20: #e0e0e0;
-  --color-carbon-gray-30: #c6c6c6;
-  --color-carbon-gray-60: #6f6f6f;
-  --color-carbon-gray-70: #525252;
-  --color-carbon-gray-90: #262626;
-  --color-carbon-gray-100: #161616;
-  
-  /* Carbon UI Shell / Interactive */
-  --color-carbon-blue-60: #0f62fe;
-  --color-carbon-blue-70: #0043ce;
-  --color-carbon-blue-20: #d0e2ff;
+  /* ── Elevation layers (dark mode, slight blue tint) ── */
+  --color-surface-base: hsl(220 15% 7%);   /* page background */
+  --color-surface-0: hsl(220 13% 9%);      /* sunken / table zebra */
+  --color-surface-1: hsl(220 12% 12%);     /* cards */
+  --color-surface-2: hsl(220 11% 17%);     /* elevated cards / modals */
+  --color-surface-3: hsl(220 10% 22%);     /* tooltips / popovers */
 
-  /* Risk tier palette (Carbon status colors) */
-  --color-risk-critical: #da1e28; /* Red 60 */
-  --color-risk-high: #ff832b; /* Orange 40 */
-  --color-risk-medium: #f1c21b; /* Yellow 30 */
-  --color-risk-low: #24a148; /* Green 50 */
-  
-  /* Status backgrounds for tags */
-  --color-risk-critical-bg: #fff1f1; /* Red 10 */
-  --color-risk-high-bg: #fff1e8; /* Orange 10 */
-  --color-risk-medium-bg: #fcf1cd; /* Yellow 10 */
-  --color-risk-low-bg: #defbe6; /* Green 10 */
+  /* ── Text ── */
+  --color-text-primary:   hsl(220 20% 92%);   /* near-white, not harsh */
+  --color-text-secondary: hsl(220 12% 60%);   /* muted labels */
+  --color-text-tertiary:  hsl(220 10% 40%);   /* placeholder / disabled */
 
-  /* Signal accent — used sparingly for interactive/live elements */
-  --color-signal: var(--color-carbon-blue-60);
+  /* ── Borders ── */
+  --color-border-subtle:  rgba(255 255 255 / 0.07);
+  --color-border-default: rgba(255 255 255 / 0.12);
+  --color-border-strong:  rgba(255 255 255 / 0.20);
 
-  --animate-scan: scan 3s linear infinite;
+  /* ── IBM Blue accent (10% rule) ── */
+  --color-accent:       #0f62fe;  /* IBM Blue 60 — primary interactive */
+  --color-accent-hover: #0043ce;  /* IBM Blue 70 */
+  --color-accent-dim:   rgba(15 98 254 / 0.15); /* tinted surfaces */
+
+  /* ── Risk semantic colors (dark-mode tuned, no pastels) ── */
+  --color-risk-critical:     #ff4d4f;
+  --color-risk-critical-dim: rgba(255 77 79 / 0.15);
+  --color-risk-high:         #fa8c16;
+  --color-risk-high-dim:     rgba(250 140 22 / 0.15);
+  --color-risk-medium:       #fadb14;
+  --color-risk-medium-dim:   rgba(250 219 20 / 0.12);
+  --color-risk-low:          #52c41a;
+  --color-risk-low-dim:      rgba(82 196 26 / 0.12);
+
+  /* ── Animations ── */
+  --animate-shimmer:     shimmer 1.5s ease-in-out infinite;
+  --animate-fade-in-up:  fade-in-up 220ms ease-out both;
+  --animate-pulse-ring:  pulse-ring 2s ease-in-out infinite;
+  --animate-dot-bounce:  dot-bounce 1s ease-in-out infinite;
+  --animate-scan:        scan 3s linear infinite;
+}
+
+/* ─── Keyframes ─────────────────────────────────────── */
+
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-ring {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(1.5); }
+}
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40%           { transform: translateY(-6px); opacity: 1; }
 }
 
 @keyframes scan {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(100%);
-  }
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
 }
+
+/* ─── Base ───────────────────────────────────────────── */
 
 @layer base {
   html {
-    color-scheme: light;
+    color-scheme: dark;
   }
 
   body {
-    @apply bg-carbon-gray-10 text-carbon-gray-100 font-sans antialiased;
+    background-color: var(--color-surface-base);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   ::selection {
-    @apply bg-carbon-blue-20 text-carbon-gray-100;
+    background-color: var(--color-accent-dim);
+    color: var(--color-text-primary);
   }
 
   * {
-    scrollbar-color: var(--color-carbon-gray-30) var(--color-carbon-gray-10);
+    scrollbar-color: hsl(220 10% 22%) hsl(220 13% 9%);
     scrollbar-width: thin;
   }
 }
 
+/* ─── Utilities ─────────────────────────────────────── */
+
 @layer utilities {
-  .font-tabular {
-    font-variant-numeric: tabular-nums;
+  /* Typography */
+  .font-tabular { font-variant-numeric: tabular-nums; }
+
+  /* Surfaces */
+  .surface-1 {
+    background-color: var(--color-surface-1);
+    border: 1px solid var(--color-border-subtle);
+  }
+  .surface-2 {
+    background-color: var(--color-surface-2);
+    border: 1px solid var(--color-border-default);
+  }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--color-surface-1);
+    border-radius: 2px;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255 255 255 / 0.05) 50%,
+      transparent 100%
+    );
+    animation: var(--animate-shimmer);
+  }
+
+  /* Animate page content */
+  .animate-fade-in-up { animation: var(--animate-fade-in-up); }
+
+  /* Risk left-bar indicator on table rows */
+  .row-critical { border-left: 2px solid var(--color-risk-critical); }
+  .row-high     { border-left: 2px solid var(--color-risk-high); }
+
+  /* Accent text */
+  .text-accent { color: var(--color-accent); }
+
+  /* IBM Blue gradient for header stripe */
+  .header-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(220 100% 20%) 0%,
+      hsl(220 15% 7%) 70%
+    );
   }
 }
+
+/* ─── Reduced motion ────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
   *,

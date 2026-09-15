@@ -1,4 +1,12 @@
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import type { SensorReading } from "../api/types";
 import { isDegrading, type TrendDirection } from "../lib/sensorTrend";
 
@@ -9,48 +17,95 @@ interface SensorChartProps {
   badDirection: TrendDirection;
 }
 
-export function SensorChart({ title, unit, data, badDirection }: SensorChartProps) {
+export function SensorChart({
+  title,
+  unit,
+  data,
+  badDirection,
+}: SensorChartProps) {
   const degrading = isDegrading(data, badDirection);
-  const lineColor = degrading ? "#da1e28" : "#24a148";
+  const lineColor = degrading ? "#ff4d4f" : "#52c41a";
 
   return (
-    <div className="border border-carbon-gray-20 bg-carbon-white p-4 shadow-sm">
-      <div className="mb-4 flex items-center justify-between border-b border-carbon-gray-20 pb-2">
-        <h3 className="font-sans text-sm font-semibold text-carbon-gray-100">
-          {title} <span className="font-normal text-carbon-gray-70">({unit})</span>
+    <div
+      className="rounded-sm p-4"
+      style={{
+        backgroundColor: "var(--color-surface-1)",
+        border: "1px solid var(--color-border-subtle)",
+        borderTop: `2px solid ${lineColor}`,
+      }}
+    >
+      {/* Card header */}
+      <div
+        className="mb-4 flex items-center justify-between pb-3"
+        style={{ borderBottom: "1px solid var(--color-border-subtle)" }}
+      >
+        <h3
+          className="font-sans text-sm font-semibold"
+          style={{ color: "var(--color-text-primary)" }}
+        >
+          {title}{" "}
+          <span style={{ color: "var(--color-text-tertiary)", fontWeight: 400 }}>
+            ({unit})
+          </span>
         </h3>
         <span
-          className={`font-sans text-xs font-semibold tracking-wide uppercase ${
-            degrading ? "text-risk-critical" : "text-risk-low"
-          }`}
+          className="font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm"
+          style={{
+            color: lineColor,
+            backgroundColor: degrading
+              ? "var(--color-risk-critical-dim)"
+              : "var(--color-risk-low-dim)",
+            border: `1px solid ${lineColor}`,
+            borderRadius: "2px",
+          }}
         >
           {degrading ? "Degrading" : "Stable"}
         </span>
       </div>
 
+      {/* Chart */}
       {data.length === 0 ? (
-        <div className="flex h-40 items-center justify-center text-sm text-carbon-gray-60">
+        <div
+          className="flex h-40 items-center justify-center font-sans text-sm"
+          style={{ color: "var(--color-text-tertiary)" }}
+        >
           No sensor data
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={160}>
-          <AreaChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+          <AreaChart
+            data={data}
+            margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
+          >
             <defs>
               <linearGradient id={`fill-${title}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={lineColor} stopOpacity={0.2} />
+                <stop offset="0%" stopColor={lineColor} stopOpacity={0.25} />
                 <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#e0e0e0" strokeDasharray="2 4" vertical={false} />
+            <CartesianGrid
+              stroke="rgba(255 255 255 / 0.05)"
+              strokeDasharray="2 4"
+              vertical={false}
+            />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 10, fill: "#525252", fontFamily: "IBM Plex Mono" }}
+              tick={{
+                fontSize: 10,
+                fill: "var(--color-text-tertiary)",
+                fontFamily: "IBM Plex Mono",
+              }}
               tickFormatter={(v: string) => v.slice(5)}
-              axisLine={{ stroke: "#c6c6c6" }}
+              axisLine={{ stroke: "var(--color-border-subtle)" }}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 10, fill: "#525252", fontFamily: "IBM Plex Mono" }}
+              tick={{
+                fontSize: 10,
+                fill: "var(--color-text-tertiary)",
+                fontFamily: "IBM Plex Mono",
+              }}
               tickFormatter={(v: number) => `${Math.round(v * 10) / 10}`}
               axisLine={false}
               tickLine={false}
@@ -58,14 +113,14 @@ export function SensorChart({ title, unit, data, badDirection }: SensorChartProp
             />
             <Tooltip
               contentStyle={{
-                background: "#161616",
-                border: "none",
-                borderRadius: 0,
+                background: "hsl(220 12% 12%)",
+                border: "1px solid rgba(255 255 255 / 0.12)",
+                borderRadius: 2,
                 fontSize: 12,
                 fontFamily: "IBM Plex Sans",
-                color: "#ffffff"
+                color: "hsl(220 20% 92%)",
               }}
-              labelStyle={{ color: "#c6c6c6", marginBottom: 4 }}
+              labelStyle={{ color: "hsl(220 12% 60%)", marginBottom: 4 }}
               formatter={(value) => [`${value}${unit}`, title]}
             />
             <Area
