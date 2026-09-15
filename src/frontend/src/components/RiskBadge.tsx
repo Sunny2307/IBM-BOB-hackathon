@@ -1,16 +1,16 @@
 import type { RiskTier } from "../api/types";
 
-const TIER_CLASSES: Record<RiskTier, string> = {
-  Critical: "text-risk-critical bg-risk-critical-bg",
-  High: "text-risk-high bg-risk-high-bg",
-  Medium: "text-risk-medium bg-risk-medium-bg",
-  Low: "text-risk-low bg-risk-low-bg",
+const TIER_TEXT: Record<RiskTier, string> = {
+  Critical: "text-risk-critical",
+  High: "text-risk-high",
+  Medium: "text-risk-medium",
+  Low: "text-risk-low",
 };
 
 const SIZE_CLASSES = {
-  sm: "px-2 py-0.5 text-[10px]",
-  md: "px-2 py-0.5 text-xs",
-  lg: "px-3 py-1 text-sm",
+  sm: { text: "text-[11px]", dot: "h-1.5 w-1.5" },
+  md: { text: "text-xs", dot: "h-2 w-2" },
+  lg: { text: "text-sm", dot: "h-2.5 w-2.5" },
 };
 
 interface RiskBadgeProps {
@@ -18,12 +18,16 @@ interface RiskBadgeProps {
   size?: keyof typeof SIZE_CLASSES;
 }
 
+/** A small, precise accent — a colored dot plus label, not a filled chip.
+ * Risk-tier color is the only color signal in the UI, so it stays legible
+ * as ink-colored text rather than being diluted into a pastel background. */
 export function RiskBadge({ tier, size = "md" }: RiskBadgeProps) {
+  const { text, dot } = SIZE_CLASSES[size];
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full font-sans font-medium tracking-wide ${TIER_CLASSES[tier]} ${SIZE_CLASSES[size]}`}
+      className={`inline-flex items-center gap-2 font-sans font-medium tracking-wide uppercase ${TIER_TEXT[tier]} ${text}`}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      <span className={`${dot} shrink-0 rounded-full bg-current`} />
       {tier}
     </span>
   );

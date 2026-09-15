@@ -6,10 +6,10 @@ import type { RiskTier } from "../api/types";
 // (map markers, inline styles, canvas/SVG) should import this instead of
 // re-declaring the palette.
 export const RISK_TIER_HEX: Record<RiskTier, string> = {
-  Critical: "#da1e28",
-  High: "#ff832b",
-  Medium: "#f1c21b",
-  Low: "#24a148",
+  Critical: "#9c2b1f",
+  High: "#a85f17",
+  Medium: "#8f6c0c",
+  Low: "#2c6b46",
 };
 
 export const RISK_TIER_ORDER: RiskTier[] = ["Critical", "High", "Medium", "Low"];

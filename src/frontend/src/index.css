@@ -1,55 +1,48 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   "Editorial Clean" design system.
+   Token NAMES are kept from the original Carbon-derived palette so every
+   component's existing utility classes (bg-carbon-white, text-risk-critical,
+   etc.) pick up the new look automatically — only the VALUES changed, from
+   a cool-gray enterprise-SaaS palette to a warm paper/ink editorial one.
+   ========================================================================== */
 @theme {
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "IBM Plex Serif", ui-serif, Georgia, "Times New Roman", serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
 
-  /* Carbon Grayscale (Light theme focused) */
-  --color-carbon-white: #ffffff;
-  --color-carbon-gray-10: #f4f4f4;
-  --color-carbon-gray-20: #e0e0e0;
-  --color-carbon-gray-30: #c6c6c6;
-  --color-carbon-gray-60: #6f6f6f;
-  --color-carbon-gray-70: #525252;
-  --color-carbon-gray-90: #262626;
-  --color-carbon-gray-100: #161616;
-  
-  /* Carbon UI Shell / Interactive */
-  --color-carbon-blue-60: #0f62fe;
-  --color-carbon-blue-70: #0043ce;
-  --color-carbon-blue-20: #d0e2ff;
+  /* Paper & ink (was: cool Carbon grayscale) */
+  --color-carbon-white: #fffdf8; /* raised surface — slightly warmer than pure white */
+  --color-carbon-gray-10: #f6f2e8; /* page background ("paper") */
+  --color-carbon-gray-20: #e6dfc9; /* hairline borders */
+  --color-carbon-gray-30: #d6cbac; /* stronger hairline / disabled */
+  --color-carbon-gray-60: #8c8368; /* muted ink (captions, icons) */
+  --color-carbon-gray-70: #5c5440; /* secondary ink (body copy) */
+  --color-carbon-gray-90: #2a2418; /* near-black ink */
+  --color-carbon-gray-100: #1c1810; /* primary ink (headings) */
 
-  /* Risk tier palette (Carbon status colors) */
-  --color-risk-critical: #da1e28; /* Red 60 */
-  --color-risk-high: #ff832b; /* Orange 40 */
-  --color-risk-medium: #f1c21b; /* Yellow 30 */
-  --color-risk-low: #24a148; /* Green 50 */
-  
-  /* Status backgrounds for tags */
-  --color-risk-critical-bg: #fff1f1; /* Red 10 */
-  --color-risk-high-bg: #fff1e8; /* Orange 10 */
-  --color-risk-medium-bg: #fcf1cd; /* Yellow 10 */
-  --color-risk-low-bg: #defbe6; /* Green 10 */
+  /* Interactive accent — deep editorial ink-blue, not a bright SaaS blue */
+  --color-carbon-blue-60: #2b4a6f;
+  --color-carbon-blue-70: #1d3450;
+  --color-carbon-blue-20: #dfe6ec;
 
-  /* Signal accent — used sparingly for interactive/live elements */
-  --color-signal: var(--color-carbon-blue-60);
+  /* Risk tier palette — deepened toward ink tones, still unambiguous */
+  --color-risk-critical: #9c2b1f;
+  --color-risk-high: #a85f17;
+  --color-risk-medium: #8f6c0c;
+  --color-risk-low: #2c6b46;
 
-  /* Skeleton shimmer surface (loading placeholders) */
-  --color-skeleton-base: #e8e8e8;
-  --color-skeleton-shine: #f4f4f4;
+  --color-risk-critical-bg: #f6e7e3;
+  --color-risk-high-bg: #f5ead9;
+  --color-risk-medium-bg: #f2ecd6;
+  --color-risk-low-bg: #e3ecdf;
 
-  --animate-scan: scan 3s linear infinite;
+  --color-skeleton-base: #ece5d2;
+  --color-skeleton-shine: #f6f2e8;
+
   --animate-shimmer: shimmer 1.6s ease-in-out infinite;
-  --animate-page-in: page-in 0.22s ease-out;
-}
-
-@keyframes scan {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(100%);
-  }
+  --animate-page-in: page-in 0.25s ease-out;
 }
 
 @keyframes shimmer {
@@ -96,6 +89,16 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Small caps-ish editorial kicker label: "SECTION LABEL" */
+  .kicker {
+    @apply font-sans text-[11px] font-semibold tracking-[0.14em] text-carbon-gray-60 uppercase;
+  }
+
+  /* Thin rule used instead of boxed cards to separate editorial sections */
+  .hairline {
+    @apply border-carbon-gray-20;
+  }
+
   .skeleton {
     background-color: var(--color-skeleton-base);
     background-image: linear-gradient(
@@ -115,11 +118,11 @@
   /* Leaflet div-icon markers colored by risk tier, with a soft glow halo */
   .grid-map-marker {
     display: block;
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     border: 2px solid var(--color-carbon-white);
-    box-shadow: 0 0 0 2px currentColor, 0 0 8px 2px currentColor;
+    box-shadow: 0 0 0 1px currentColor, 0 0 6px 1px currentColor;
   }
 }
 

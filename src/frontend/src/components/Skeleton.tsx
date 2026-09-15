@@ -25,7 +25,7 @@ export function StatTileRowSkeleton({ count = 4 }: { count?: number }) {
 
 export function MapSkeleton({ height = 380 }: { height?: number }) {
   return (
-    <div className="border border-carbon-gray-20 bg-carbon-white p-2 shadow-sm" style={{ height }}>
+    <div className="border border-carbon-gray-20 bg-carbon-white p-2" style={{ height }}>
       <Bar className="h-full w-full" />
     </div>
   );
@@ -33,7 +33,7 @@ export function MapSkeleton({ height = 380 }: { height?: number }) {
 
 export function ChartSkeleton() {
   return (
-    <div className="border border-carbon-gray-20 bg-carbon-white p-4 shadow-sm">
+    <div className="border border-carbon-gray-20 bg-carbon-white p-4">
       <div className="mb-4 flex items-center justify-between border-b border-carbon-gray-20 pb-2">
         <Bar className="h-4 w-32" />
         <Bar className="h-4 w-16" />
@@ -45,7 +45,7 @@ export function ChartSkeleton() {
 
 export function TableSkeleton({ rows = 6, cols = 7 }: { rows?: number; cols?: number }) {
   return (
-    <div className="border border-carbon-gray-20 bg-carbon-white shadow-sm">
+    <div className="border border-carbon-gray-20 bg-carbon-white">
       <div className="flex items-center gap-4 border-b border-carbon-gray-20 px-4 py-3">
         <Bar className="h-6 w-28" />
         <Bar className="h-6 w-28" />
@@ -66,7 +66,7 @@ export function TableSkeleton({ rows = 6, cols = 7 }: { rows?: number; cols?: nu
 
 export function AssetHeaderSkeleton() {
   return (
-    <div className="border border-carbon-gray-20 bg-carbon-white p-6 shadow-sm">
+    <div className="border border-carbon-gray-20 bg-carbon-white p-6">
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="flex-1 space-y-6">
           <Bar className="h-7 w-64" />
@@ -102,7 +102,7 @@ export function MaintenancePlanSkeleton() {
   return (
     <div className="space-y-6">
       {Array.from({ length: 2 }).map((_, i) => (
-        <div key={i} className="border border-carbon-gray-20 bg-carbon-white shadow-sm">
+        <div key={i} className="border border-carbon-gray-20 bg-carbon-white">
           <div className="space-y-2 border-b border-carbon-gray-20 bg-carbon-gray-10 px-6 py-4">
             <Bar className="h-4 w-40" />
             <Bar className="h-3 w-64" />

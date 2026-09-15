@@ -8,10 +8,10 @@
 
 | Field | Value |
 |---|---|
-| **Team Name** | Grid Failure Advisors |
+| **Team Name** | Fantastic_Four |
 | **Track** | AI |
-| **Team Lead** | Malay Sheta — malay.sheta@devxlabs.ai |
-| **Members** | Malay Sheta |
+| **Team Lead** | Sunny Radadiya — 23ce122@charusat.edu.in |
+| **Members** | Jenil Sutariya (23dcs129@charusat.edu.in), Kaushal Vora (23dcs044@charusat.edu.in), Veer Bhalodiya (23dcs010@charusat.edu.in) |
 
 ---
 
@@ -62,7 +62,7 @@ deterministic keyword router if no LLM key is configured.
 | **Frameworks** | FastAPI, React, Vite, Tailwind CSS |
 | **IBM Technologies** | IBM Bob, Model Context Protocol (MCP) |
 | **Databases** | None — in-memory, generated JSON/CSV (zero infra by design) |
-| **Other** | Uvicorn, Pydantic, httpx, Groq API (Llama 3.3 70B, tool-calling, free tier), Leaflet / react-leaflet, Recharts, Playwright (used to verify the UI end-to-end) |
+| **Other** | Uvicorn, Pydantic, httpx, Groq API (openai/gpt-oss-120b, tool-calling, free tier), Leaflet / react-leaflet, Recharts, Playwright (used to verify the UI end-to-end) |
 
 ---
 

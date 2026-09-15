@@ -11,13 +11,18 @@ interface SensorChartProps {
 
 export function SensorChart({ title, unit, data, badDirection }: SensorChartProps) {
   const degrading = isDegrading(data, badDirection);
-  const lineColor = degrading ? "#da1e28" : "#24a148";
+  const lineColor = degrading ? "#9c2b1f" : "#2c6b46";
+  // SVG gradient ids can't contain spaces — url(#fill-Partial Discharge) silently
+  // truncates at the space and the fill falls back to solid black. Slugify so
+  // multi-word titles (Partial Discharge, Oil Quality) render the same
+  // gradient as single-word ones (Temperature, Vibration) did by accident.
+  const gradientId = `fill-${title.replace(/\s+/g, "-")}`;
 
   return (
-    <div className="border border-carbon-gray-20 bg-carbon-white p-4 shadow-sm">
-      <div className="mb-4 flex items-center justify-between border-b border-carbon-gray-20 pb-2">
-        <h3 className="font-sans text-sm font-semibold text-carbon-gray-100">
-          {title} <span className="font-normal text-carbon-gray-70">({unit})</span>
+    <div className="border border-carbon-gray-20 bg-carbon-white p-5">
+      <div className="mb-4 flex items-center justify-between border-b border-carbon-gray-20 pb-3">
+        <h3 className="font-serif text-base font-semibold text-carbon-gray-100">
+          {title} <span className="font-sans text-sm font-normal text-carbon-gray-70">({unit})</span>
         </h3>
         <span
           className={`font-sans text-xs font-semibold tracking-wide uppercase ${
@@ -36,21 +41,21 @@ export function SensorChart({ title, unit, data, badDirection }: SensorChartProp
         <ResponsiveContainer width="100%" height={160}>
           <AreaChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
             <defs>
-              <linearGradient id={`fill-${title}`} x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={lineColor} stopOpacity={0.2} />
                 <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#e0e0e0" strokeDasharray="2 4" vertical={false} />
+            <CartesianGrid stroke="#e6dfc9" strokeDasharray="2 4" vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 10, fill: "#525252", fontFamily: "IBM Plex Mono" }}
+              tick={{ fontSize: 10, fill: "#5c5440", fontFamily: "IBM Plex Mono" }}
               tickFormatter={(v: string) => v.slice(5)}
-              axisLine={{ stroke: "#c6c6c6" }}
+              axisLine={{ stroke: "#d6cbac" }}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 10, fill: "#525252", fontFamily: "IBM Plex Mono" }}
+              tick={{ fontSize: 10, fill: "#5c5440", fontFamily: "IBM Plex Mono" }}
               tickFormatter={(v: number) => `${Math.round(v * 10) / 10}`}
               axisLine={false}
               tickLine={false}
@@ -58,14 +63,14 @@ export function SensorChart({ title, unit, data, badDirection }: SensorChartProp
             />
             <Tooltip
               contentStyle={{
-                background: "#161616",
+                background: "#1c1810",
                 border: "none",
                 borderRadius: 0,
                 fontSize: 12,
                 fontFamily: "IBM Plex Sans",
-                color: "#ffffff"
+                color: "#fffdf8"
               }}
-              labelStyle={{ color: "#c6c6c6", marginBottom: 4 }}
+              labelStyle={{ color: "#d6cbac", marginBottom: 4 }}
               formatter={(value) => [`${value}${unit}`, title]}
             />
             <Area
@@ -73,7 +78,7 @@ export function SensorChart({ title, unit, data, badDirection }: SensorChartProp
               dataKey="value"
               stroke={lineColor}
               strokeWidth={2}
-              fill={`url(#fill-${title})`}
+              fill={`url(#${gradientId})`}
               dot={false}
             />
           </AreaChart>

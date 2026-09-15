@@ -24,9 +24,9 @@ import httpx
 from app.services import grid_tools
 
 GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_MODEL = "openai/gpt-oss-120b"
 REQUEST_TIMEOUT_SECONDS = 8.0
-MAX_TOOL_ROUNDS = 3
+MAX_TOOL_ROUNDS = 6
 
 SYSTEM_PROMPT = (
     "You are Grid Copilot, an operational assistant embedded in the Grid "
@@ -39,7 +39,9 @@ SYSTEM_PROMPT = (
     "to a grid operator making a real-time decision, not a chatty assistant. "
     "Always call at least one tool before answering any question about "
     "assets, risk, or maintenance; only skip tool calls for greetings or "
-    "small talk."
+    "small talk. Format answers as plain prose and, when listing multiple "
+    "items, a simple bullet list using '- '. Never use markdown tables "
+    "(pipe/dash syntax) or headings — the chat UI cannot render them."
 )
 
 TOOLS: list[dict] = [
@@ -167,6 +169,30 @@ def _execute_tool(name: str, arguments: dict) -> dict:
         return {"error": f"Invalid arguments for '{name}': {exc}"}
 
 
+def _compact_for_llm(result: dict) -> dict:
+    """Strip raw time-series data (sensor_series, weather_context) before
+    feeding a tool result back into the LLM's context. explain_asset_risk's
+    full result is ~1700+ tokens mostly from 30-day sensor arrays and a
+    7-day forecast the LLM never needs for a prose "why is X risky" answer
+    (only `components` does) — sending the full thing on every tool round
+    was the main driver of hitting Groq's free-tier per-minute token cap.
+    The full, untrimmed result is still returned to the API caller/frontend
+    via `last_tool_data` — only what the LLM sees is reduced."""
+    if not isinstance(result, dict):
+        return result
+    trimmed = {k: v for k, v in result.items() if k not in ("sensor_series", "weather_context")}
+    if "sensor_series" in result:
+        trimmed["sensor_series"] = "omitted for brevity — use `components` for risk factors"
+    if "weather_context" in result:
+        forecast = result["weather_context"].get("forecast", [])
+        storm_days = [f["date"] for f in forecast if f.get("storm_warning")]
+        trimmed["weather_context"] = {
+            "region": result["weather_context"].get("region"),
+            "storm_warning_dates": storm_days or "none in the 7-day forecast",
+        }
+    return trimmed
+
+
 def _build_messages(question: str, history: list[dict]) -> list[dict]:
     messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
     for msg in history:
@@ -239,7 +265,7 @@ async def ask_llm(question: str, history: list[dict]) -> dict:
                     {
                         "role": "tool",
                         "tool_call_id": call.get("id"),
-                        "content": json.dumps(result),
+                        "content": json.dumps(_compact_for_llm(result)),
                     }
                 )
 

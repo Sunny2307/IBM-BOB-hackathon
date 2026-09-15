@@ -11,28 +11,27 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-carbon-gray-10">
-      {/* Carbon UI Shell Header (always dark) */}
-      <header className="sticky top-0 z-30 bg-carbon-gray-100 border-b border-carbon-gray-90">
-        <div className="flex h-12 items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            {/* Minimalist IBM-style logo mark */}
-            <span className="h-3 w-3 shrink-0 bg-carbon-blue-60" aria-hidden />
-            <span className="font-sans text-sm font-semibold tracking-wide text-carbon-white">
+      {/* Editorial masthead — paper background, serif wordmark, hairline rule */}
+      <header className="sticky top-0 z-30 border-b border-carbon-gray-20 bg-carbon-white">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-8 gap-y-2 px-6 py-5 md:px-10">
+          <div className="flex items-baseline gap-3">
+            <h1 className="font-serif text-[22px] font-semibold tracking-tight text-carbon-gray-100">
               Grid Failure Advisor
-            </span>
+            </h1>
+            <span className="kicker hidden sm:inline">Outage Prediction &amp; Maintenance Planning</span>
           </div>
 
-          <nav className="flex h-full items-center">
+          <nav className="flex items-baseline gap-6">
             {NAV_ITEMS.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex h-full items-center px-4 font-sans text-sm transition-colors ${
+                  `border-b py-1 font-sans text-sm tracking-wide transition-colors ${
                     isActive
-                      ? "border-b-2 border-carbon-blue-60 text-carbon-white bg-carbon-gray-90"
-                      : "border-b-2 border-transparent text-carbon-gray-30 hover:text-carbon-white hover:bg-carbon-gray-90"
+                      ? "border-carbon-gray-100 text-carbon-gray-100"
+                      : "border-transparent text-carbon-gray-60 hover:border-carbon-gray-30 hover:text-carbon-gray-100"
                   }`
                 }
               >
@@ -43,11 +42,15 @@ export function Layout() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 md:px-8">
+      <main className="mx-auto max-w-6xl px-6 py-10 md:px-10 md:py-14">
         <div key={location.pathname} className="page-transition">
           <Outlet />
         </div>
       </main>
+
+      <footer className="mx-auto max-w-6xl border-t border-carbon-gray-20 px-6 py-8 md:px-10">
+        <p className="kicker">Grid Failure Advisor — IBM BoB AI Innovation Hackathon 2026</p>
+      </footer>
 
       <CopilotPanel />
     </div>

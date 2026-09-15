@@ -104,7 +104,7 @@ async def ask(question: str, history: list[dict] | None = None) -> dict:
         try:
             return await llm_copilot.ask_llm(question, history)
         except Exception as exc:  # noqa: BLE001 - deliberate: any failure at all falls back
-            print(f"[copilot] LLM path failed ({exc.__class__.__name__}); using deterministic router.")
+            print(f"[copilot] LLM path failed ({exc.__class__.__name__}: {exc}); using deterministic router.")
 
     return _ask_deterministic(question)
 

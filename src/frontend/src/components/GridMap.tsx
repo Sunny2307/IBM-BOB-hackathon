@@ -59,10 +59,7 @@ export function GridMap({ assets, height = 380 }: GridMapProps) {
   }, [assets]);
 
   return (
-    <div
-      className="relative border border-carbon-gray-20 bg-carbon-white shadow-sm"
-      style={{ height }}
-    >
+    <div className="relative border border-carbon-gray-20 bg-carbon-white" style={{ height }}>
       <MapContainer
         center={center}
         zoom={6}
@@ -83,8 +80,10 @@ export function GridMap({ assets, height = 380 }: GridMapProps) {
           >
             <Popup>
               <div className="min-w-[180px] font-sans">
-                <p className="text-sm font-semibold text-carbon-gray-100">{asset.name}</p>
-                <div className="mt-1 flex items-center gap-2">
+                <p className="font-serif text-sm font-semibold text-carbon-gray-100">
+                  {asset.name}
+                </p>
+                <div className="mt-1.5 flex items-center gap-2">
                   <RiskBadge tier={asset.risk_tier} size="sm" />
                   <span className="font-mono text-xs font-tabular text-carbon-gray-70">
                     {asset.risk_score}/100
@@ -93,9 +92,9 @@ export function GridMap({ assets, height = 380 }: GridMapProps) {
                 <button
                   type="button"
                   onClick={() => navigate(`/assets/${asset.asset_id}`)}
-                  className="mt-3 w-full border border-carbon-blue-60 px-2 py-1 text-xs font-semibold text-carbon-blue-60 transition-colors hover:bg-carbon-blue-60 hover:text-carbon-white"
+                  className="mt-3 w-full border border-carbon-blue-60 px-2 py-1.5 text-xs font-medium tracking-wide text-carbon-blue-60 uppercase transition-colors hover:bg-carbon-blue-60 hover:text-carbon-white"
                 >
-                  View asset detail
+                  View asset detail →
                 </button>
               </div>
             </Popup>
