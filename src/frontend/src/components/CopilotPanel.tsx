@@ -59,7 +59,7 @@ export function CopilotPanel() {
         type="button"
         onClick={() => setIsOpen(true)}
         aria-label="Open copilot panel"
-        className={`fixed top-1/2 right-0 z-40 -translate-y-1/2 border border-r-0 border-carbon-gray-30 bg-carbon-white px-2 py-4 font-sans text-xs tracking-wider text-carbon-blue-60 uppercase transition-transform hover:bg-carbon-gray-10 shadow-sm ${
+        className={`fixed top-1/2 right-0 z-[950] -translate-y-1/2 border border-r-0 border-carbon-gray-30 bg-carbon-white px-2 py-4 font-sans text-xs tracking-wider text-carbon-blue-60 uppercase transition-transform hover:bg-carbon-gray-10 shadow-sm ${
           isOpen ? "translate-x-full" : "translate-x-0"
         }`}
         style={{ writingMode: "vertical-rl" }}
@@ -71,7 +71,7 @@ export function CopilotPanel() {
       <div
         aria-hidden
         onClick={() => setIsOpen(false)}
-        className={`fixed inset-0 z-40 bg-carbon-gray-100/30 transition-opacity duration-300 ease-out ${
+        className={`fixed inset-0 z-[900] bg-carbon-gray-100/30 transition-opacity duration-300 ease-out ${
           isOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
@@ -79,7 +79,7 @@ export function CopilotPanel() {
       <div
         role="complementary"
         aria-label="Copilot chat panel"
-        className={`fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col border-l border-carbon-gray-30 bg-carbon-gray-10 shadow-2xl transition-transform duration-300 ease-in-out will-change-transform ${
+        className={`fixed inset-y-0 right-0 z-[1000] flex w-full max-w-md flex-col border-l border-carbon-gray-30 bg-carbon-gray-10 shadow-2xl transition-transform duration-300 ease-in-out will-change-transform ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
