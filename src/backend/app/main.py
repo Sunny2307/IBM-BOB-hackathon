@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
-from app.services import data_loader, live_simulator
+from app.services import data_loader, live_simulator, keepalive
 from app.routers import assets, maintenance, copilot
 
 
@@ -20,12 +20,16 @@ async def lifespan(app: FastAPI):
 
     live_simulator.tick()  # seed last_updated + one immediate nudge
     nudger_task = asyncio.create_task(live_simulator.run_forever())
+    keepalive_task = asyncio.create_task(keepalive.run_forever())
     try:
         yield
     finally:
         nudger_task.cancel()
+        keepalive_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await nudger_task
+        with contextlib.suppress(asyncio.CancelledError):
+            await keepalive_task
 
 
 app = FastAPI(
@@ -35,8 +39,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
-allowed_origins = {frontend_origin, "http://localhost:5173", "http://127.0.0.1:5173"}
+frontend_origins = [
+    origin.strip()
+    for origin in os.getenv("FRONTEND_ORIGIN", "http://localhost:5173").split(",")
+    if origin.strip()
+]
+allowed_origins = {*frontend_origins, "http://localhost:5173", "http://127.0.0.1:5173"}
 
 app.add_middleware(
     CORSMiddleware,

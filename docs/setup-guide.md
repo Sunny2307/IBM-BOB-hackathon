@@ -126,3 +126,55 @@ exact verification command and what it proves.
 | Frontend shows an amber "DEMO DATA" banner | The backend isn't running, isn't on port 8000, or CORS is blocking it — confirm `curl http://localhost:8000/health` works, and that `src/frontend/.env` matches |
 | `npm run dev` fails to start | Confirm Node 18+ (`node --version`); delete `node_modules` and re-run `npm install` |
 | Port 8000 or 5173 already in use | Another process is bound to the port — stop it, or run uvicorn with `--port 8001` and update `VITE_API_BASE_URL` in `src/frontend/.env` to match |
+
+## Deploy live (public URL)
+
+Everything above still works unchanged for local dev. This adds an optional
+free, public deployment: **Render** for the backend, **Vercel** for the
+frontend. Both deploy straight from this GitHub repo — no code changes
+needed beyond what's already committed (`render.yaml`,
+`src/frontend/vercel.json`, and a `keepalive` self-ping so Render's free
+plan doesn't spin down from inactivity).
+
+### 1. Backend on Render
+
+1. Go to https://dashboard.render.com/blueprints -> **New Blueprint
+   Instance** -> connect this GitHub repo. Render auto-detects
+   `render.yaml` at the repo root and creates the `grid-failure-advisor-api`
+   web service (free plan, root dir `src/backend`).
+2. In the service's **Environment** tab, set `GROQ_API_KEY` if you want the
+   Grid Copilot's LLM path live (optional — it works without one).
+3. Deploy. Once live, note the service URL, e.g.
+   `https://grid-failure-advisor-api.onrender.com`.
+4. Verify: `curl https://grid-failure-advisor-api.onrender.com/health` ->
+   `{"status":"ok",...}`.
+
+Render sets `RENDER_EXTERNAL_URL` automatically, which the backend uses to
+self-ping `/health` every 5 minutes (`app/services/keepalive.py`) so the
+free-tier service doesn't sleep from inactivity — no extra setup needed.
+
+### 2. Frontend on Vercel
+
+1. Go to https://vercel.com/new -> import this GitHub repo.
+2. Set **Root Directory** to `src/frontend` (Vercel then picks up the
+   committed `vercel.json` for the build/output settings automatically).
+3. Add environment variable `VITE_API_BASE_URL` = your Render URL from step
+   1 (e.g. `https://grid-failure-advisor-api.onrender.com`).
+4. Deploy. Note the resulting URL, e.g. `https://grid-failure-advisor.vercel.app`.
+
+### 3. Connect them (CORS)
+
+Back in the Render service's **Environment** tab, update `FRONTEND_ORIGIN`
+to include the Vercel URL, comma-separated with the local dev origin:
+
+```
+http://localhost:5173,https://grid-failure-advisor.vercel.app
+```
+
+Save — Render redeploys automatically. Reload the Vercel URL: the dashboard
+should load 50 real assets with no "DEMO DATA" banner.
+
+### 4. Record the link
+
+Put the live URL in `demo/live-demo-url.txt` (replace the "NOT DEPLOYED"
+placeholder) so it shows up in the submission.

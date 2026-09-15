@@ -1,0 +1,27 @@
+# Render Blueprint — deploys the FastAPI backend as a free web service.
+# Usage: https://dashboard.render.com/blueprints -> New Blueprint Instance ->
+# point at this repo. Render reads this file automatically from the repo root.
+# See docs/setup-guide.md ("Deploy live") for the full walkthrough.
+services:
+  - type: web
+    name: grid-failure-advisor-api
+    runtime: python
+    plan: free
+    rootDir: src/backend
+    buildCommand: "pip install -r requirements.txt && python scripts/generate_synthetic_data.py"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      # Update this after the frontend is deployed to Vercel — comma-separate
+      # to keep local dev working too, e.g.:
+      # http://localhost:5173,https://your-app.vercel.app
+      - key: FRONTEND_ORIGIN
+        value: http://localhost:5173
+      - key: LLM_PROVIDER
+        value: none
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: GROQ_API_KEY
+        sync: false # secret — set in the Render dashboard, not committed here
+      - key: PYTHON_VERSION
+        value: "3.11"

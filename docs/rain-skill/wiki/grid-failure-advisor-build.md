@@ -127,3 +127,65 @@ contract between them still holds.
   returned, no XSS vector in the new answer-formatting component, CORS
   unchanged. Two low-severity warnings found and fixed (history/content size
   caps; broadened tool-argument exception handling).
+
+## 2026-09-15 follow-up: live public-URL deployment setup
+
+Task record: [2026-09-15-live-deploy-setup.md](../tasks/2026-09-15-live-deploy-setup.md).
+User wanted a real public URL (submission's `known_limitations` previously
+said "no live deployment") without disturbing local dev.
+
+### What changed
+- **Render (backend) + Vercel (frontend)** chosen — the standard free-tier
+  pairing, inferred directly from the user's own instruction to add a
+  self-ping so the backend doesn't sleep (that workaround is specifically
+  a Render free-plan issue; Railway/Fly.io don't need it the same way).
+- **`app/services/keepalive.py`** — new background asyncio task (same shape
+  as `live_simulator.run_forever()`), pings its own `/health` every 5 min.
+  Reads `RENDER_EXTERNAL_URL` (Render sets this automatically — zero config
+  on deploy) or an explicit `SELF_PING_URL` override. **True no-op locally**:
+  if neither is set, it returns immediately — verified both by a live run
+  (clean startup, no ping activity) and unit tests
+  (`tests/test_keepalive.py`).
+- **`main.py` CORS** — `FRONTEND_ORIGIN` is now comma-separated-aware so the
+  deployed Vercel origin can be added alongside the local dev origin instead
+  of replacing it.
+- **`render.yaml`** (repo root, Blueprint) — backend as a free web service;
+  build command installs deps + regenerates the synthetic data (data dir is
+  gitignored, so this has to happen at build time on Render's ephemeral
+  disk — safe because generation is deterministic, seed 42).
+  `GROQ_API_KEY` is `sync: false` so it's never committed, set only in the
+  Render dashboard.
+- **`src/frontend/vercel.json`** — pins Vite build/output settings for the
+  monorepo (Vercel project's Root Directory still needs to be set to
+  `src/frontend` by hand in the dashboard — that field isn't controllable
+  from this file).
+- **`docs/setup-guide.md`** — new "Deploy live" section appended; every
+  existing local-dev section left untouched.
+
+### What could NOT be automated (needs the user's own accounts)
+Connecting the GitHub repo to Render and to Vercel and clicking deploy —
+both require the user's own OAuth-linked dashboard session, which this
+agent has no access to. Everything up to that point (code, config, docs) is
+done; the account-linking + deploy click + final CORS URL round-trip is a
+manual step-by-step in `docs/setup-guide.md`.
+
+### A wrinkle worth remembering
+Several edits to `main.py` and both `.env.example` files silently reverted
+to their pre-edit content between tool calls, more than once, with no error
+reported by the edit itself — root cause not confirmed, but the repo lives
+under `OneDrive\Desktop\...`, so OneDrive re-syncing a stale cloud copy (or
+an editor tab holding a stale buffer and autosaving over the change) is the
+leading suspect. **Lesson**: after any edit to a file in this repo, re-read
+or grep it back before relying on the change — don't trust a successful
+Edit/Write result alone as proof the content is actually on disk.
+
+### Verification performed
+- Backend: fresh server start on a clean port, `/health` and `/assets` both
+  responded correctly; `keepalive.run_forever()` confirmed to return
+  immediately with no env vars set; full suite 26/26 pytest passing (23
+  pre-existing + 3 new keepalive tests).
+- Config: `render.yaml` parsed as valid YAML, `vercel.json` parsed as valid
+  JSON.
+- Security gate (FEATURE, 7-point): PASSED — no new inputs/endpoints/deps,
+  no secrets committed, ping URL never attacker-controlled. One pre-existing,
+  unrelated warning noted (no npm install cooldown configured).
