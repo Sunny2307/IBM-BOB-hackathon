@@ -32,10 +32,13 @@ hospitals and water treatment plants.
 Grid Failure Advisor fuses asset sensor data, 7-day weather forecasts, and
 historical incident records into one **explainable** composite risk score
 per asset, ranks assets by how much damage their failure would actually
-cause, and generates a maintenance plan that pulls action dates forward
-ahead of an incoming storm. A **Grid Copilot**, backed by an MCP server IBM
-Bob can call directly, answers plain-English questions grounded in the same
-real data.
+cause, plots them on a live risk map, and generates a maintenance plan that
+pulls action dates forward ahead of an incoming storm. Sensor data drifts
+continuously via a background simulator so the dashboard reflects real
+change over time. A **Grid Copilot** first tries a **Groq-hosted LLM with
+tool-calling**, grounded on the same real data functions an MCP server
+exposes to IBM Bob, so it can't invent numbers — falling back to a
+deterministic keyword router if no LLM key is configured.
 
 ---
 
@@ -44,8 +47,10 @@ real data.
 - **Explainable risk scoring** — every point of every asset's 0-100 score traces to a named factor (per-sensor anomaly, weather risk, historical incident rate) with a plain-language explanation, shown in a "Why This Score" panel
 - **Sensor anomaly detection** across temperature, vibration, partial discharge, and oil quality, measured against each asset's own 15-day baseline
 - **Weather-timed maintenance & crew pre-positioning plan** — recommended dates are pulled forward to land before a forecast storm in the asset's region
-- **Grid Copilot with a real MCP server** — the same tool functions (`get_at_risk_assets`, `explain_asset_risk`, `get_maintenance_plan`, …) are callable independently by IBM Bob or any MCP client, and by the in-app chat — one implementation, not a demo stub
-- **Zero-dependency-on-a-live-LLM-key demo** — the copilot's deterministic intent router means the live demo never breaks on Wi-Fi or a missing API key
+- **Live risk map** (Leaflet/OpenStreetMap) plotting every asset by location and risk tier, alongside stat tiles and skeleton-loading states
+- **Grid Copilot with an optional Groq LLM tool-calling layer** — the model calls the exact same grounded functions (`get_at_risk_assets`, `explain_asset_risk`, `get_maintenance_plan`, `list_regions`, …) exposed to IBM Bob via MCP and to the in-app chat: one implementation, not a demo stub, so the integration is load-bearing across all three surfaces
+- **Deterministic fallback with zero dependency on a live LLM key** — if `GROQ_API_KEY` is unset or a call fails, the copilot still answers correctly from the same grounded tools, so the demo never breaks on Wi-Fi or a missing credential
+- **Background live-data simulator** — sensor readings and risk scores drift every ~13 seconds so the app visibly updates without a restart
 
 ---
 
@@ -57,7 +62,7 @@ real data.
 | **Frameworks** | FastAPI, React, Vite, Tailwind CSS |
 | **IBM Technologies** | IBM Bob, Model Context Protocol (MCP) |
 | **Databases** | None — in-memory, generated JSON/CSV (zero infra by design) |
-| **Other** | Uvicorn, Pydantic, Recharts, Playwright (used to verify the UI end-to-end) |
+| **Other** | Uvicorn, Pydantic, httpx, Groq API (Llama 3.3 70B, tool-calling, free tier), Leaflet / react-leaflet, Recharts, Playwright (used to verify the UI end-to-end) |
 
 ---
 
@@ -127,11 +132,11 @@ Open **http://localhost:5173** for the app. Interactive API docs at
 
 ## ⚠️ Known Limitations
 
-- All data is synthetic (deterministic, seeded generator) — no real utility dataset was available in the build window
+- All data is synthetic (deterministic seeded generator, plus a small bounded live-drift simulator) — no real utility dataset was available in the build window
 - Risk scoring is intentionally rule-based/statistical, not a trained ML model — a deliberate explainability and time-budget decision, documented in `docs/solution-overview.md`, and designed to be upgradeable once real failure labels exist
-- No map visualization, authentication, or persistent database in this MVP
+- No authentication or persistent database in this MVP — data lives in memory for the life of the process
 - Not deployed — runs locally via `docs/setup-guide.md` (see `demo/live-demo-url.txt`)
-- The Grid Copilot uses a deterministic keyword/intent router rather than a full LLM, by design, so the demo has zero dependency on a live API key
+- The Grid Copilot's LLM path requires a free Groq API key (`GROQ_API_KEY` in `src/backend/.env`); without one it automatically falls back to the original deterministic keyword router, which covers the three core query types (highest risk, why an asset is risky, maintenance plan) but not open-ended follow-ups
 
 ---
 

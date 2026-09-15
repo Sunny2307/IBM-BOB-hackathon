@@ -38,25 +38,32 @@ submission:
   solution_summary: >
     Grid Failure Advisor fuses asset sensor telemetry, 7-day weather forecasts, and
     historical incident records into one explainable composite risk score per
-    asset, ranks assets by grid impact severity, and generates a prioritized
-    maintenance and crew pre-positioning plan timed against incoming severe
-    weather. A Grid Copilot lets an operator — or IBM Bob itself, via a standalone
-    MCP server exposing the same tools — ask natural-language questions answered
-    from real, grounded tool calls, not a hallucinated guess.
+    asset, ranks assets by grid impact severity, plots them on a live risk map, and
+    generates a prioritized maintenance and crew pre-positioning plan timed against
+    incoming severe weather. Sensor data drifts continuously via a background
+    simulator so the dashboard reflects change over time rather than a frozen
+    snapshot. A Grid Copilot lets an operator — or IBM Bob itself, via a standalone
+    MCP server exposing the same tools — ask natural-language questions; it first
+    tries a Groq-hosted LLM with tool-calling grounded on the same real data
+    functions (so it cannot invent numbers), and falls back to a deterministic
+    keyword router if no LLM key is configured or the call fails, so the demo never
+    depends on a live third-party API key to work correctly.
 
   key_features:
     - "Explainable composite risk scoring: every point on a 0-100 score is traced to a named factor (sensor anomaly per metric, weather risk, historical incident rate) with a plain-language explanation, not a black-box prediction"
     - "Sensor anomaly detection across 4 metrics (temperature, vibration, partial discharge, oil quality) using each asset's own 15-day baseline, surfacing degradation signatures before failure"
     - "Weather-timed maintenance and crew pre-positioning plan that pulls recommended action dates forward ahead of a forecast storm in the asset's region"
-    - "Grid Copilot: a natural-language chat backed by an MCP server — the exact same tool functions are callable independently by IBM Bob or any MCP client, proving the integration is load-bearing, not name-dropped"
-    - "Deterministic copilot routing with zero dependency on a live LLM API key, so the demo never breaks on Wi-Fi or a missing credential"
+    - "Live risk map (Leaflet/OpenStreetMap) plotting every asset by location, colored by risk tier, alongside stat tiles and skeleton-loading states on the dashboard"
+    - "Grid Copilot with an optional Groq LLM tool-calling layer: the model calls the exact same grounded functions (get_at_risk_assets, explain_asset_risk, get_maintenance_plan, list_regions) exposed to IBM Bob via MCP — one implementation shared by the in-app chat, the LLM tool layer, and the MCP server, so the integration is load-bearing, not name-dropped"
+    - "Deterministic keyword-router fallback with zero dependency on a live LLM API key — if Groq is unset or a call fails, the copilot still answers correctly from the same grounded tools, so the demo never breaks on Wi-Fi or a missing credential"
+    - "Background live-data simulator that drifts sensor readings and risk scores every ~13 seconds, so the dashboard visibly updates without a restart"
 
   tech_stack:
     languages: ["Python", "TypeScript"]
     frameworks: ["FastAPI", "React", "Vite", "Tailwind CSS"]
     ibm_technologies: ["IBM Bob", "Model Context Protocol (MCP)"]
     databases: []
-    other: ["Uvicorn", "Pydantic", "Recharts", "pytest", "Playwright (verification)"]
+    other: ["Uvicorn", "Pydantic", "httpx", "Groq API (Llama 3.3 70B, tool-calling, free tier)", "Leaflet / react-leaflet", "Recharts", "pytest", "Playwright (verification)"]
 
   what_we_are_most_proud_of: >
     The risk engine's explainability: docs/architecture.md and the live
@@ -70,15 +77,18 @@ submission:
     call get_at_risk_assets over MCP and get the exact numbers the dashboard shows.
 
   known_limitations: >
-    All data is synthetic (deterministic, seeded generator) — no real utility
-    dataset was available in the build window; the risk model is intentionally
-    rule-based/statistical rather than a trained ML model, for explainability and
-    speed under time pressure (documented as an explicit, upgradeable design
-    decision). No map visualization, authentication, or persistent database —
-    data is regenerated JSON/CSV loaded into memory. No live deployment; run
-    locally per docs/setup-guide.md. The Grid Copilot uses a deterministic
-    keyword/intent router rather than a full LLM, by design, so the demo has zero
-    dependency on a live API key.
+    All data is synthetic (deterministic, seeded generator plus a small bounded
+    live-drift simulator) — no real utility dataset was available in the build
+    window; the risk model is intentionally rule-based/statistical rather than a
+    trained ML model, for explainability and speed under time pressure (documented
+    as an explicit, upgradeable design decision). No authentication or persistent
+    database — data lives in memory for the life of the process. No live
+    deployment; run locally per docs/setup-guide.md. The Grid Copilot's LLM path
+    requires a free Groq API key to be configured (GROQ_API_KEY in
+    src/backend/.env); without one it automatically uses the original
+    deterministic keyword router instead, which covers the three core query
+    types (highest risk, why an asset is risky, maintenance plan) but not
+    open-ended follow-up questions.
 
 # =============================================================================
 # ARTIFACT LOCATIONS
