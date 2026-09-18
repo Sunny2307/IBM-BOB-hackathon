@@ -82,6 +82,9 @@ class _AdminAssignmentsPageState extends State<AdminAssignmentsPage> {
       ),
     );
     if (chosen == null) return;
+    // The sheet is awaited, so this page can be gone by the time it closes —
+    // reading ScaffoldMessenger off a dead context would throw.
+    if (!mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
     try {

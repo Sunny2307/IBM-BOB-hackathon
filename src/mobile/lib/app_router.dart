@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'pages/admin_assignments_page.dart';
+import 'pages/admin_send_alert_page.dart';
 import 'pages/admin_users_page.dart';
 import 'pages/alerts_page.dart';
 import 'pages/asset_detail_page.dart';
@@ -79,6 +80,11 @@ final GoRouter appRouter = GoRouter(
           path: '/admin/users',
           pageBuilder: (context, state) =>
               _fadeThrough(state, const AdminUsersPage()),
+        ),
+        GoRoute(
+          path: '/admin/send-alert',
+          pageBuilder: (context, state) =>
+              _fadeThrough(state, const AdminSendAlertPage()),
         ),
         GoRoute(
           path: '/admin/assignments',

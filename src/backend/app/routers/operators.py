@@ -10,8 +10,12 @@ dedicated test.
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app import db
-from app.models.schemas import CreateAssignmentRequest, CreateUserRequest
-from app.services import auth, grid_tools
+from app.models.schemas import (
+    CreateAssignmentRequest,
+    CreateUserRequest,
+    SendAlertRequest,
+)
+from app.services import alert_monitor, auth, grid_tools
 
 router = APIRouter(tags=["operators"])
 
@@ -104,6 +108,57 @@ def delete_assignment(assignment_id: int, user: dict = Depends(auth.require_admi
         "DELETE FROM assignments WHERE id = %s AND company_id = %s",
         (assignment_id, user["company_id"]),
     )
+
+
+@router.get("/admin/users/{user_id}/assignable-assets")
+def assignable_assets(user_id: int, user: dict = Depends(auth.require_admin)):
+    """The assets an alert to this user could actually land on.
+
+    Powers the asset picker on the Send-alert screen, so an admin cannot choose
+    an asset the recipient would never see.
+    """
+    _guard_db()
+    target = db.query_one(
+        "SELECT id FROM users WHERE id = %s AND company_id = %s",
+        (user_id, user["company_id"]),
+    )
+    if target is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such user in your company.")
+
+    return [
+        {
+            "asset_id": a["asset_id"],
+            "name": a["name"],
+            "region": a["region"],
+            "risk_score": a["risk_score"],
+            "risk_tier": a["risk_tier"],
+        }
+        for a in alert_monitor.assets_visible_to(user_id, user["company_id"])
+    ]
+
+
+@router.post("/admin/alerts/send", status_code=status.HTTP_201_CREATED)
+def send_alert(request: SendAlertRequest, user: dict = Depends(auth.require_admin)):
+    """Raises a real alert so a named person is notified now, instead of waiting
+    for an asset to cross tiers on its own."""
+    _guard_db()
+    target = db.query_one(
+        "SELECT id, full_name FROM users WHERE id = %s AND company_id = %s",
+        (request.user_id, user["company_id"]),
+    )
+    if target is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such user in your company.")
+
+    try:
+        alert = alert_monitor.raise_alert_for_user(
+            request.user_id, user["company_id"], request.asset_id
+        )
+    except ValueError as exc:
+        # These are admin-fixable situations (no assignments, asset out of
+        # scope), so the message is written to be shown as-is.
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+    return {"alert": alert, "notified": target["full_name"]}
 
 
 # ---------------------------------------------------------------- crew

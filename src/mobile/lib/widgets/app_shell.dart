@@ -48,6 +48,7 @@ class _AppShellState extends State<AppShell> {
       ? const [
           ('/', 'Dashboard', Icons.dashboard_outlined),
           ('/alerts', 'Alerts', Icons.notifications_outlined),
+          ('/admin/send-alert', 'Send', Icons.campaign_outlined),
           ('/admin/users', 'Team', Icons.people_outline),
           ('/admin/assignments', 'Coverage', Icons.map_outlined),
         ]

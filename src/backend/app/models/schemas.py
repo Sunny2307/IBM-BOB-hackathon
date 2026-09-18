@@ -173,6 +173,17 @@ class CreateAssignmentRequest(BaseModel):
     scope_value: str = Field(min_length=1, max_length=120)
 
 
+class SendAlertRequest(BaseModel):
+    """Admin asks for an alert to be raised so a specific person is notified.
+
+    `asset_id` is optional: left out, the server picks the highest-risk asset
+    inside that user's assignments, which is the one worth waking them for.
+    """
+
+    user_id: int
+    asset_id: str | None = Field(default=None, pattern=r"^AST-\d+$")
+
+
 class AlertOut(BaseModel):
     id: int
     asset_id: str

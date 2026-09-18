@@ -81,3 +81,30 @@ and the generated `assets.json` / `weather_forecast.json` field names directly.
 
 See [`src/mobile/README.md`](../../../src/mobile/README.md) for the full
 file-by-file map from web to mobile.
+
+## Android build requirements (added 2026-09-18)
+
+`flutter_local_notifications` 19.5.0 fails the build at
+`:app:checkDebugAarMetadata` unless **core library desugaring** is enabled.
+Both halves are required in `android/app/build.gradle.kts`:
+
+```kotlin
+compileOptions {
+    isCoreLibraryDesugaringEnabled = true
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
+```
+
+The `2.1.4` version is not arbitrary — it is what the plugin itself declares
+in its own `android/build.gradle`. An older desugar library still fails the
+AAR metadata check. If the notification plugin is ever upgraded, re-check that
+file rather than assuming the version still matches.
+
+Notification permissions are already wired: `POST_NOTIFICATIONS` and
+`RECEIVE_BOOT_COMPLETED` in the manifest, plus a runtime
+`requestNotificationsPermission()` call in `lib/services/notifications.dart`
+(required from Android 13 on; the test device runs Android 16).
+

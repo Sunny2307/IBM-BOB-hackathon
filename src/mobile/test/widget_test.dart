@@ -185,6 +185,44 @@ void main() {
       );
     });
 
+    test('retries POST /auth/login when the tunnel drops it', () async {
+      // The bug: the tunnel drops ~half the POSTs from the handset and login
+      // was single-shot, so sign-in failed with "Could not reach API".
+      var calls = 0;
+      final client = ApiClient(
+        httpClient: MockClient((request) async {
+          calls++;
+          if (calls < 3) throw const SocketException('dropped');
+          return http.Response(
+            '{"access_token":"t","user":{"id":1,"email":"a@b.c",'
+            '"full_name":"A","role":"admin","company_id":1}}',
+            200,
+          );
+        }),
+      );
+
+      await client.login('a@b.c', 'pw');
+      expect(calls, 3, reason: 'login must survive dropped requests');
+    });
+
+    test('does NOT retry mutations that would duplicate', () async {
+      // createUser/createAssignment would 409 on a retry after having already
+      // succeeded, so they stay single-shot.
+      var calls = 0;
+      final client = ApiClient(
+        httpClient: MockClient((request) async {
+          calls++;
+          throw const SocketException('dropped');
+        }),
+      )..authToken = 'token';
+
+      await expectLater(
+        client.createAssignment(userId: 1, scopeValue: 'North Valley'),
+        throwsA(isA<ApiError>()),
+      );
+      expect(calls, 1);
+    });
+
     test('does NOT retry the copilot POST', () async {
       var calls = 0;
       final client = ApiClient(

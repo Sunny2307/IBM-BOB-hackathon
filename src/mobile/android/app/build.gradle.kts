@@ -12,6 +12,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Required by flutter_local_notifications, which uses java.time APIs
+        // that need backporting on older Android versions. Without this the
+        // build fails at :app:checkDebugAarMetadata.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -46,4 +50,11 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Version matched to what flutter_local_notifications 19.5.0 itself
+    // declares (see its android/build.gradle) — an older desugar library
+    // fails the AAR metadata check.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

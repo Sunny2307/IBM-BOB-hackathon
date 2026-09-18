@@ -92,6 +92,8 @@ class ApiClient {
     String method = 'GET',
     Object? body,
     bool authenticated = false,
+    bool? retryable,
+    Duration? budgetOverride,
   }) async {
     final uri = Uri.parse('$apiBaseUrl$path');
     final headers = {'Content-Type': 'application/json'};
@@ -105,20 +107,22 @@ class ApiClient {
       throw ApiError('Not signed in.', 401);
     }
 
-    final isGet = method != 'POST' && method != 'DELETE';
-
-    // The dev tunnel drops roughly one request in three outright — they hang
-    // forever rather than erroring — while every response that does arrive
-    // lands in under ~1.2s. So a short per-attempt timeout with a few retries
-    // beats one long wait: three 8s attempts bound the worst case at 24s and
-    // cut the drop rate to a few percent. Without this, a single dropped call
-    // puts the user on the "demo data" fallback banner, which reads as a
-    // broken demo.
+    // The dev tunnel drops a large share of requests outright — measured from
+    // the test handset, 3 of 6 POSTs hung forever rather than erroring, while
+    // every response that does arrive lands in under ~1.2s. So a short
+    // per-attempt budget with a few retries beats one long wait: three 8s
+    // attempts bound the worst case at 24s and cut the effective drop rate to
+    // a few percent.
     //
-    // GETs are idempotent, so retrying is free. The copilot POST is not
-    // retried — a retry would silently fire a second LLM call.
-    final attempts = isGet ? getAttempts : 1;
-    final budget = isGet ? timeout : copilotTimeout;
+    // Retrying is decided per CALL, not per HTTP verb. Verb is the wrong test:
+    // `POST /auth/login` is a pure credential check and must be retried (a
+    // single dropped request is exactly what made sign-in fail), while
+    // `POST /admin/users` would 409 on the retry after having already
+    // succeeded. Each call site declares `retryable:` for itself; an
+    // unmarked POST/DELETE stays single-shot, which is the safe default.
+    final canRetry = retryable ?? (method == 'GET');
+    final attempts = canRetry ? getAttempts : 1;
+    final budget = budgetOverride ?? timeout;
     http.Response? response;
     Object? lastFailure;
 
@@ -222,6 +226,11 @@ class ApiClient {
     final data = await _request(
       '/copilot/ask',
       method: 'POST',
+      // Never retried: a second attempt is a second LLM round-trip. Given the
+      // long budget, a dropped copilot question surfaces as an error the user
+      // can simply re-ask.
+      retryable: false,
+      budgetOverride: copilotTimeout,
       body: {
         'question': question,
         'history': history.map((t) => t.toJson()).toList(),
@@ -236,6 +245,9 @@ class ApiClient {
     final data = await _request(
       '/auth/login',
       method: 'POST',
+      // Verifying a password has no side effect, so a dropped request is safe
+      // to repeat. This is the fix for sign-in failing on a flaky tunnel.
+      retryable: true,
       body: {'email': email, 'password': password},
     );
     return AuthSession.fromJson((data as Map).cast<String, dynamic>());
@@ -251,8 +263,14 @@ class ApiClient {
     return AlertDetail.fromJson((data as Map).cast<String, dynamic>());
   }
 
-  Future<void> acknowledgeAlert(int alertId) =>
-      _request('/alerts/$alertId/ack', method: 'POST', authenticated: true);
+  /// Idempotent: acknowledging an already-acknowledged alert is a no-op on
+  /// the server, so a dropped request is safe to repeat.
+  Future<void> acknowledgeAlert(int alertId) => _request(
+        '/alerts/$alertId/ack',
+        method: 'POST',
+        authenticated: true,
+        retryable: true,
+      );
 
   Future<MyAssignments> getMyAssignments() async {
     final data = await _request('/assignments/mine', authenticated: true);
@@ -311,11 +329,45 @@ class ApiClient {
         body: {'user_id': userId, 'scope_type': scopeType, 'scope_value': scopeValue},
       );
 
+  /// Idempotent: deleting an already-deleted assignment removes nothing.
   Future<void> deleteAssignment(int assignmentId) => _request(
         '/admin/assignments/$assignmentId',
         method: 'DELETE',
         authenticated: true,
+        retryable: true,
       );
+
+  /// The assets an alert to [userId] could actually land on. Empty means the
+  /// user has no assignments yet.
+  Future<List<AssignableAsset>> getAssignableAssets(int userId) async {
+    final data = await _request(
+      '/admin/users/$userId/assignable-assets',
+      authenticated: true,
+    );
+    if (data is! List) {
+      throw ApiError('Expected a list from /assignable-assets');
+    }
+    return data
+        .whereType<Map>()
+        .map((e) => AssignableAsset.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+
+  /// Raises a real alert so [userId] is notified now. Leaving [assetId] null
+  /// lets the server pick the highest-risk asset in that user's scope.
+  ///
+  /// Retryable: the server reuses the one open alert per asset rather than
+  /// stacking duplicates, so a repeated send is a no-op, not a second alert.
+  Future<SentAlert> sendAlert({required int userId, String? assetId}) async {
+    final data = await _request(
+      '/admin/alerts/send',
+      method: 'POST',
+      authenticated: true,
+      retryable: true,
+      body: {'user_id': userId, 'asset_id': ?assetId},
+    );
+    return SentAlert.fromJson((data as Map).cast<String, dynamic>());
+  }
 
   void close() => _http.close();
 }

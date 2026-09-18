@@ -644,3 +644,59 @@ class AssignedAsset {
   final RiskTier riskTier;
   final int customersServed;
 }
+
+/// One asset an alert to a given user could land on — the options offered by
+/// the Send-alert screen's asset picker.
+class AssignableAsset {
+  const AssignableAsset({
+    required this.assetId,
+    required this.name,
+    required this.region,
+    required this.riskScore,
+    required this.riskTier,
+  });
+
+  factory AssignableAsset.fromJson(Map<String, dynamic> json) =>
+      AssignableAsset(
+        assetId: _toStr(json['asset_id']),
+        name: _toStr(json['name']),
+        region: _toStr(json['region']),
+        riskScore: _toDouble(json['risk_score']),
+        riskTier: RiskTier.fromJson(json['risk_tier']),
+      );
+
+  final String assetId;
+  final String name;
+  final String region;
+  final double riskScore;
+  final RiskTier riskTier;
+}
+
+/// Result of an admin pressing "Send alert".
+class SentAlert {
+  const SentAlert({
+    required this.alertId,
+    required this.assetName,
+    required this.tier,
+    required this.headline,
+    required this.notified,
+  });
+
+  factory SentAlert.fromJson(Map<String, dynamic> json) {
+    final alert = (json['alert'] as Map?)?.cast<String, dynamic>() ?? const {};
+    return SentAlert(
+      alertId: _toInt(alert['id']),
+      assetName: _toStr(alert['asset_name']),
+      tier: RiskTier.fromJson(alert['tier']),
+      headline: _toStr(alert['headline']),
+      notified: _toStr(json['notified']),
+    );
+  }
+
+  final int alertId;
+  final String assetName;
+  final RiskTier tier;
+  final String headline;
+  final String notified;
+}
+
