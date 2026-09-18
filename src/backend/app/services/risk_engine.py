@@ -43,8 +43,13 @@ BAD_DIRECTION_IS_INCREASE = {
 }
 
 WEATHER_MAX = 25.0
-WEATHER_STORM_CEILING = 25.0
-WEATHER_CALM_CEILING = 15.0
+# Onset -> saturation for each weather threat. Below the first number the
+# threat adds nothing; at the second it is at full weight.
+WIND_GUST_MPH_RANGE = (20.0, 60.0)      # overhead-line / structure damage
+PRECIP_PROBABILITY_RANGE = (0.10, 0.80)  # flashover, flooding, access loss
+HEAT_F_RANGE = (85.0, 110.0)             # thermal derating on loaded equipment
+# A threat 6 days out is real but less actionable than one tomorrow.
+PROXIMITY_DECAY_PER_DAY = 0.08
 
 HISTORICAL_MAX = 20.0
 BASE_FAILURE_RATE_NORMALIZER = 0.09
@@ -111,33 +116,97 @@ def compute_sensor_components(asset_id: str) -> list[dict]:
     return components
 
 
-def compute_weather_component(region: str) -> dict:
+def _ramp(value: float, low: float, high: float) -> float:
+    """0 below `low`, 1 at/above `high`, linear between. The shape every
+    weather threat uses, so one function covers all three."""
+    if high <= low:
+        return 0.0
+    return max(0.0, min(1.0, (value - low) / (high - low)))
+
+
+def _day_threat(day: dict) -> tuple[float, str]:
+    """Severity 0-1 for one forecast day, plus the name of what drives it.
+
+    The worst single threat governs, with a smaller additive allowance for the
+    others — a day that is both windy and soaking is worse than either alone,
+    but not double.
+    """
+    threats = {
+        "wind": _ramp(day["wind_speed_mph"], *WIND_GUST_MPH_RANGE),
+        "precipitation": _ramp(day["precip_probability"], *PRECIP_PROBABILITY_RANGE),
+        "heat": _ramp(day.get("temp_high_f", 0.0), *HEAT_F_RANGE),
+    }
+    driver = max(threats, key=threats.get)
+    worst = threats[driver]
+    others = sum(v for k, v in threats.items() if k != driver)
+    return min(1.0, worst + 0.25 * others), driver
+
+
+def _weather_vulnerability(asset: dict) -> float:
+    """How much harder the same weather hits THIS asset. An N-1-redundant
+    substation riding out a storm is not the same risk as a 40-year-old
+    transformer with no backup, and a flat regional weather score cannot tell
+    them apart."""
+    age = date.today().year - asset["install_year"]
+    factor = 1.0
+    if age >= 25:
+        factor += 0.15
+    if asset.get("has_redundancy"):
+        factor -= 0.25
+    return max(0.6, min(1.25, factor))
+
+
+def compute_weather_component(asset: dict) -> dict:
+    """Continuous weather risk for one asset, from its region's 7-day forecast.
+
+    Deliberately NOT a binary "storm somewhere this week -> full points": that
+    gave every asset in a region the same 25 points whether the storm was
+    tomorrow or Friday, and whether the asset was a new redundant substation
+    or a 40-year-old transformer. Here severity scales with how bad the worst
+    day is, how soon it is, and how vulnerable this particular asset is --
+    and heat counts, because a heat wave pushing loaded equipment toward its
+    thermal limit is a real failure driver even when the sky is clear.
+    """
+    region = asset["region"]
     forecast = data_loader.get_weather_forecast(region)
-    storm_days = [d for d in forecast if d["storm_warning"]]
+    if not forecast:
+        return {
+            "factor": "Weather Risk",
+            "contribution": 0.0,
+            "explanation": f"No forecast data available for {region}.",
+        }
 
-    if storm_days:
-        storm = storm_days[0]
-        contribution = WEATHER_STORM_CEILING
-        explanation = (
-            f"Storm warning forecast for {region} on {storm['date']}: wind "
-            f"{storm['wind_speed_mph']} mph, precipitation probability "
-            f"{round(storm['precip_probability'] * 100)}% — compounds any existing "
-            f"equipment stress in this region."
-        )
+    vulnerability = _weather_vulnerability(asset)
+
+    best_day, best_weighted, best_driver = None, 0.0, "wind"
+    for day_index, day in enumerate(forecast):
+        severity, driver = _day_threat(day)
+        weighted = severity * max(0.4, 1.0 - PROXIMITY_DECAY_PER_DAY * day_index)
+        if weighted >= best_weighted:
+            best_day, best_weighted, best_driver = day, weighted, driver
+
+    contribution = round(min(WEATHER_MAX, WEATHER_MAX * best_weighted * vulnerability), 1)
+
+    if contribution <= 1.0:
+        explanation = f"Benign 7-day forecast for {region}; negligible added weather risk."
     else:
-        max_wind = max((d["wind_speed_mph"] for d in forecast), default=0.0)
-        max_precip = max((d["precip_probability"] for d in forecast), default=0.0)
-        severity = max(0.0, min(1.0, 0.4 * (max_wind / 30.0) + 0.6 * (max_precip / 0.5)))
-        contribution = round(severity * WEATHER_CALM_CEILING, 1)
-        if severity > 0.4:
-            explanation = (
-                f"No storm warning for {region}, but elevated wind/precipitation in the "
-                f"7-day forecast add modest risk."
-            )
-        else:
-            explanation = f"Calm 7-day forecast for {region}; minimal added weather risk."
+        driver_phrase = {
+            "wind": f"wind gusting to {best_day['wind_speed_mph']} mph",
+            "precipitation": f"{round(best_day['precip_probability'] * 100)}% precipitation probability",
+            "heat": f"a {best_day['temp_high_f']}°F high driving thermal stress on loaded equipment",
+        }[best_driver]
+        storm_note = "Storm-level conditions" if best_day["storm_warning"] else "Elevated conditions"
+        vuln_note = ""
+        if vulnerability > 1.0:
+            vuln_note = " This asset is weighted up as ageing with no redundancy."
+        elif vulnerability < 1.0:
+            vuln_note = " This asset is weighted down for having N-1 redundancy."
+        explanation = (
+            f"{storm_note} forecast for {region} on {best_day['date']}: {driver_phrase}"
+            f" — compounds any existing equipment stress.{vuln_note}"
+        )
 
-    return {"factor": "Weather Risk", "contribution": round(contribution, 1), "explanation": explanation}
+    return {"factor": "Weather Risk", "contribution": contribution, "explanation": explanation}
 
 
 def compute_historical_component(asset: dict) -> dict:
@@ -163,7 +232,7 @@ def compute_risk_breakdown(asset_id: str) -> dict | None:
         return None
 
     sensor_components = compute_sensor_components(asset_id)
-    weather_component = compute_weather_component(asset["region"])
+    weather_component = compute_weather_component(asset)
     historical_component = compute_historical_component(asset)
 
     base_component = {

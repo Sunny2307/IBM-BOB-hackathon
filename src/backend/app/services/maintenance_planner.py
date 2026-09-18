@@ -12,6 +12,42 @@ TOP_N_DEFAULT = 20
 TIER_DEFAULT_OFFSET_DAYS = {"Critical": 1, "High": 5, "Medium": 14}
 
 
+def _weather_summary(region: str) -> str:
+    """One line describing what the weather is actually doing in this region.
+
+    Reuses the risk engine's own day-threat scoring rather than only looking at
+    the storm flag, so a 100F heat wave or a 38 mph gust day reads as the real
+    risk driver it is instead of showing up as "no severe weather".
+    """
+    forecast = data_loader.get_weather_forecast(region)
+    if not forecast:
+        return "No forecast data available for this region."
+
+    storm_days = [d for d in forecast if d["storm_warning"]]
+    if storm_days:
+        storm = storm_days[0]
+        return (
+            f"Storm warning on {storm['date']} (wind {storm['wind_speed_mph']} mph, "
+            f"{round(storm['precip_probability'] * 100)}% precip probability)."
+        )
+
+    worst, severity, driver = None, 0.0, "wind"
+    for day in forecast:
+        day_severity, day_driver = risk_engine._day_threat(day)
+        if day_severity > severity:
+            worst, severity, driver = day, day_severity, day_driver
+
+    if worst is None or severity < 0.1:
+        return "Benign 7-day forecast; no weather-driven risk."
+
+    phrase = {
+        "wind": f"wind gusting to {worst['wind_speed_mph']} mph",
+        "precipitation": f"{round(worst['precip_probability'] * 100)}% precipitation probability",
+        "heat": f"a {worst['temp_high_f']}°F high stressing loaded equipment",
+    }[driver]
+    return f"No storm warning, but elevated conditions on {worst['date']}: {phrase}."
+
+
 def _recommended_action(tier: str) -> str:
     return {
         "Critical": "Dispatch crew for emergency inspection now; pre-stage replacement parts/transformer.",
@@ -63,16 +99,7 @@ def generate_maintenance_plan(region_filter: str | None = None, top_n: int = TOP
 
     regions_out = []
     for region, assets_in_region in by_region.items():
-        forecast = data_loader.get_weather_forecast(region)
-        storm_days = [d for d in forecast if d["storm_warning"]]
-        if storm_days:
-            weather_summary = (
-                f"Storm warning on {storm_days[0]['date']} "
-                f"(wind {storm_days[0]['wind_speed_mph']} mph, "
-                f"{round(storm_days[0]['precip_probability'] * 100)}% precip probability)."
-            )
-        else:
-            weather_summary = "No severe weather in the 7-day forecast."
+        weather_summary = _weather_summary(region)
 
         items = []
         for a in sorted(assets_in_region, key=lambda x: x["priority_score"], reverse=True):

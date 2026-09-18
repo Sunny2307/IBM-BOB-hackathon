@@ -9,8 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
-from app.services import data_loader, live_simulator, keepalive
-from app.routers import assets, maintenance, copilot
+from app import db
+from app.services import data_loader, live_simulator, keepalive, weather_live, alert_monitor
+from app.routers import assets, maintenance, copilot, auth, operators
 
 
 @asynccontextmanager
@@ -18,18 +19,27 @@ async def lifespan(app: FastAPI):
     count = data_loader.warm_up()
     print(f"[startup] Loaded {count} assets from generated synthetic data.")
 
+    # The operator layer is optional infrastructure: if the database is absent
+    # the dashboard, risk engine, copilot and MCP server all still work, and
+    # only the operator routes report 503. Never let it block startup.
+    print(f"[startup] Database: {'connected' if db.init() else db.status()}")
+
     live_simulator.tick()  # seed last_updated + one immediate nudge
-    nudger_task = asyncio.create_task(live_simulator.run_forever())
-    keepalive_task = asyncio.create_task(keepalive.run_forever())
+    tasks = [
+        asyncio.create_task(live_simulator.run_forever()),
+        asyncio.create_task(keepalive.run_forever()),
+        asyncio.create_task(weather_live.refresh_forever()),
+        asyncio.create_task(alert_monitor.run_forever()),
+    ]
     try:
         yield
     finally:
-        nudger_task.cancel()
-        keepalive_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await nudger_task
-        with contextlib.suppress(asyncio.CancelledError):
-            await keepalive_task
+        for task in tasks:
+            task.cancel()
+        for task in tasks:
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+        db.close()
 
 
 app = FastAPI(
@@ -57,8 +67,16 @@ app.add_middleware(
 app.include_router(assets.router)
 app.include_router(maintenance.router)
 app.include_router(copilot.router)
+app.include_router(auth.router)
+app.include_router(operators.router)
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "last_updated": live_simulator.get_last_updated()}
+    return {
+        "status": "ok",
+        "last_updated": live_simulator.get_last_updated(),
+        "weather_source": data_loader.weather_source(),
+        "database": db.status(),
+        "alerts_last_checked": alert_monitor.get_last_run(),
+    }

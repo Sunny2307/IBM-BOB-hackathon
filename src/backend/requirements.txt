@@ -6,3 +6,10 @@ python-dotenv>=1.2.2
 numpy>=1.26.4
 pytest>=8.3.0
 httpx>=0.28.1
+
+# Operator layer. psycopg 3 (binary wheels, with its connection pool) and PyJWT.
+# Deliberately no SQLAlchemy: four tables and a dozen queries do not justify an
+# ORM plus a schema DSL. Deliberately no passlib: stdlib hashlib.scrypt is a
+# correct, memory-hard KDF with zero dependencies.
+psycopg[binary,pool]>=3.2.0
+PyJWT>=2.10.0

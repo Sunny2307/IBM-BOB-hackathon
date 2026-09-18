@@ -110,3 +110,79 @@ class CopilotResponse(BaseModel):
     answer: str
     tool_calls: list[ToolCall]
     data: dict
+
+
+# ---------------------------------------------------------------------------
+# Operator layer — companies, users, assignments, alerts.
+#
+# These describe the PEOPLE side of the system, which lives in Postgres. The
+# asset/sensor/risk models above stay in memory; the two halves join on the
+# asset_id string.
+# ---------------------------------------------------------------------------
+
+UserRole = Literal["admin", "field"]
+ScopeType = Literal["region", "asset"]
+AlertStatus = Literal["open", "acknowledged", "resolved"]
+AlertTier = Literal["High", "Critical"]
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=1, max_length=256)
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user_id: int
+    email: str
+    full_name: str
+    role: UserRole
+    company_id: int
+    company_name: str
+
+
+class UserOut(BaseModel):
+    id: int
+    email: str
+    full_name: str
+    role: UserRole
+    is_active: bool
+
+
+class CreateUserRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+    full_name: str = Field(min_length=1, max_length=120)
+    # 10 is above the 8-character folklore minimum and costs nothing to ask for
+    # on accounts an admin creates for a crew.
+    password: str = Field(min_length=10, max_length=256)
+    role: UserRole = "field"
+
+
+class AssignmentOut(BaseModel):
+    id: int
+    user_id: int
+    user_name: str
+    scope_type: ScopeType
+    scope_value: str
+
+
+class CreateAssignmentRequest(BaseModel):
+    user_id: int
+    scope_type: ScopeType = "region"
+    scope_value: str = Field(min_length=1, max_length=120)
+
+
+class AlertOut(BaseModel):
+    id: int
+    asset_id: str
+    asset_name: str
+    region: str
+    tier: AlertTier
+    previous_tier: Optional[str] = None
+    risk_score: float
+    headline: str
+    status: AlertStatus
+    raised_at: str
+    acknowledged_by_name: Optional[str] = None
+    acknowledged_at: Optional[str] = None

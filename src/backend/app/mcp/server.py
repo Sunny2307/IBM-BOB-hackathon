@@ -59,5 +59,46 @@ def list_regions() -> dict:
     return grid_tools.list_regions()
 
 
+# --- Operator tools -------------------------------------------------------
+# These need to know WHO is asking. MCP has no session, so IBM Bob passes
+# user_id and company_id explicitly — the same values the web/mobile path takes
+# from a signed JWT. Identical implementation either way (grid_tools.py), which
+# is what keeps "one definition of the truth" honest as the surface grows.
+
+
+@mcp.tool()
+def get_my_assignments(user_id: int, company_id: int) -> dict:
+    """Get the grid assets a specific operator is responsible for, scored and
+    ranked by risk — their personal work list."""
+    return grid_tools.get_my_assignments(user_id=user_id, company_id=company_id)
+
+
+@mcp.tool()
+def get_my_alerts(user_id: int, company_id: int, status: str = "open") -> dict:
+    """Get the outage-risk alerts raised on assets assigned to this operator.
+    Status may be 'open', 'acknowledged', 'resolved' or 'active' (anything not
+    yet resolved). Administrators see every alert in their company."""
+    return grid_tools.get_my_alerts(user_id=user_id, company_id=company_id, status=status)
+
+
+@mcp.tool()
+def get_alert_detail(alert_id: int, user_id: int, company_id: int) -> dict:
+    """Get one alert together with the full explainable risk breakdown behind
+    it and the recommended maintenance actions for its region."""
+    return grid_tools.get_alert_detail(
+        alert_id=alert_id, user_id=user_id, company_id=company_id
+    )
+
+
+@mcp.tool()
+def acknowledge_alert(alert_id: int, user_id: int, company_id: int) -> dict:
+    """Acknowledge an alert on this operator's behalf — records that a named
+    human has seen it and taken ownership of the response. This CHANGES
+    state; only call it when the operator has clearly asked to take the job."""
+    return grid_tools.acknowledge_alert(
+        alert_id=alert_id, user_id=user_id, company_id=company_id
+    )
+
+
 if __name__ == "__main__":
     mcp.run()

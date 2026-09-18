@@ -88,4 +88,83 @@ void main() {
     },
     skip: _live ? false : 'pass --dart-define=LIVE=true to run against a backend',
   );
+
+  group(
+    'live backend — operator layer',
+    () {
+      // Matches scripts/seed_operators.py. Run that against the same backend
+      // first, or these will fail on the login step with a 401.
+      const fieldEmail = 'ravi@grid.demo';
+      const fieldPassword = 'FieldDemo2026';
+
+      test('login returns a usable session', () async {
+        final session = await client.login(fieldEmail, fieldPassword);
+
+        expect(session.accessToken, isNotEmpty);
+        expect(session.role, UserRole.field);
+        expect(session.companyName, isNotEmpty);
+        expect(session.userId, greaterThan(0));
+      });
+
+      test('a wrong password is refused', () async {
+        await expectLater(
+          client.login(fieldEmail, 'definitely-not-the-password'),
+          throwsA(isA<ApiError>()),
+        );
+      });
+
+      test('GET /alerts/mine parses into Alert models and is scoped', () async {
+        final session = await client.login(fieldEmail, fieldPassword);
+        client.authToken = session.accessToken;
+
+        final inbox = await client.getMyAlerts(status: 'active');
+        expect(inbox.scope, isNotEmpty);
+
+        for (final alert in inbox.alerts) {
+          expect(alert.assetId, startsWith('AST-'));
+          expect(alert.headline, isNotEmpty);
+          // The monitor only ever raises these two tiers.
+          expect(alert.tier, anyOf(RiskTier.critical, RiskTier.high));
+          expect(alert.riskScore, inInclusiveRange(0, 100));
+        }
+      });
+
+      test('GET /assignments/mine returns this operator\'s own assets', () async {
+        final session = await client.login(fieldEmail, fieldPassword);
+        client.authToken = session.accessToken;
+
+        final mine = await client.getMyAssignments();
+        expect(mine.count, mine.assets.length);
+        for (final asset in mine.assets) {
+          expect(mine.regions, contains(asset.region));
+        }
+      });
+
+      test('acknowledging an alert sticks', () async {
+        final session = await client.login(fieldEmail, fieldPassword);
+        client.authToken = session.accessToken;
+
+        final inbox = await client.getMyAlerts(status: 'open');
+        if (inbox.alerts.isEmpty) {
+          markTestSkipped('no open alerts on the server right now');
+          return;
+        }
+
+        final target = inbox.alerts.first;
+        await client.acknowledgeAlert(target.id);
+
+        final after = await client.getMyAlerts(status: 'acknowledged');
+        expect(after.alerts.map((a) => a.id), contains(target.id));
+      });
+
+      test('a field user is refused the admin routes', () async {
+        final session = await client.login(fieldEmail, fieldPassword);
+        client.authToken = session.accessToken;
+
+        // Role is enforced server-side, not by hiding the tab.
+        await expectLater(client.getUsers(), throwsA(isA<ApiError>()));
+      });
+    },
+    skip: _live ? false : 'pass --dart-define=LIVE=true to run against a backend',
+  );
 }

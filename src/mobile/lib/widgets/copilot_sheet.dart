@@ -10,18 +10,26 @@ import 'formatted_answer.dart';
 /// Port of the web frontend's `CopilotPanel` right-hand drawer. On mobile the
 /// drawer becomes a near-full-height modal sheet, which is the phone-native
 /// equivalent of a side panel.
-Future<void> showCopilotSheet(BuildContext context) {
+///
+/// [seed] pre-fills the input, so an alert can hand the whole question over
+/// ("what is the threat on AST-022 and what should I do") instead of making a
+/// crew member retype an asset id on a phone. It is NOT auto-sent: the operator
+/// still reads and presses send, because an LLM call made without anyone asking
+/// is a surprise, not a feature.
+Future<void> showCopilotSheet(BuildContext context, {String? seed}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: AppColors.gray10,
     shape: const RoundedRectangleBorder(),
-    builder: (_) => const _CopilotSheet(),
+    builder: (_) => _CopilotSheet(seed: seed),
   );
 }
 
 class _CopilotSheet extends StatefulWidget {
-  const _CopilotSheet();
+  const _CopilotSheet({this.seed});
+
+  final String? seed;
 
   @override
   State<_CopilotSheet> createState() => _CopilotSheetState();
@@ -36,6 +44,12 @@ class _CopilotSheetState extends State<_CopilotSheet> {
   void initState() {
     super.initState();
     _controller.addListener(_onChanged);
+    final seed = widget.seed;
+    if (seed != null && seed.isNotEmpty) {
+      _inputController.text = seed;
+      _inputController.selection =
+          TextSelection.collapsed(offset: seed.length);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 

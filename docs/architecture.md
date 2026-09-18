@@ -20,9 +20,22 @@ graph TD
     CS --> GT
     GT --> RE
     GT --> MP
+    DL --> WX[weather_live.py<br/>Open-Meteo, 30-min cache]
+    WX -->|live 7-day forecast| OM[(Open-Meteo API<br/>keyless)]
+    WX -.->|on any failure| DATA
     DL --> DATA[(app/data/generated/<br/>assets.json, sensor_readings.json,<br/>weather_forecast.json,<br/>historical_incidents.csv)]
 
     GEN[scripts/generate_synthetic_data.py] -->|writes, deterministic seed| DATA
+
+    RTR --> AUTH[auth.py<br/>scrypt + JWT + role guards]
+    RTR --> OPS[operators.py<br/>admin users/assignments,<br/>crew alert inbox]
+    OPS --> GT
+    AUTH --> DB[(Postgres - Neon<br/>companies, users,<br/>assignments, alerts)]
+    GT --> DB
+    AM[alert_monitor.py<br/>raises on an UPWARD tier crossing] --> RE
+    AM --> DB
+    MOB[Flutter app<br/>src/mobile] -->|polls /alerts/mine| RTR
+    MOB -->|local notification| CREW([Field crew phone])
 
     MCP[MCP Server<br/>app/mcp/server.py] --> GT
     BOB[IBM Bob / any MCP client] -->|stdio, independent process| MCP
@@ -48,7 +61,12 @@ Bob-demo version.
 | Grid Tools | Python | The 4 tool functions shared by the Copilot and the MCP server |
 | Grid Copilot | Python (deterministic keyword/intent router) | Answers natural-language questions using real tool calls; zero dependency on a live LLM key |
 | MCP Server | Python `mcp` SDK (`FastMCP`) | Exposes `get_at_risk_assets`, `get_asset_detail`, `explain_asset_risk`, `get_maintenance_plan`, `list_regions` to IBM Bob / any MCP client |
-| Data Store | JSON/CSV files, loaded into memory at startup | Zero infrastructure, fully reproducible from a committed, re-runnable generator |
+| Live Weather | Open-Meteo API (keyless) + `httpx`, 30-min cache | Real 7-day forecast per region; falls back to the seeded forecast on any failure |
+| Operator layer | Postgres (Neon) via `psycopg` 3, raw SQL, no ORM | Companies, users, region assignments, alerts and acknowledgements — the people half of the system |
+| Authentication | stdlib `hashlib.scrypt` + PyJWT | Email/password sign-in, JWT carrying `company_id` and `role`, `require_admin` on every admin route |
+| Alert monitor | Background asyncio task | Raises an alert on an upward crossing into High/Critical; resolves on the way back down |
+| Mobile client | Flutter + `flutter_local_notifications` | Crew inbox, acknowledgement, admin panel, device notifications with no Firebase project |
+| Data Store | JSON/CSV files, loaded into memory at startup, dates re-anchored to today | Zero infrastructure, fully reproducible from a committed, re-runnable generator |
 | Synthetic Data Generator | Python (stdlib only, seeded) | Deterministically produces internally-consistent assets, 30-day sensor series, 7-day weather forecasts, and historical incidents |
 
 ## Data Flow
@@ -62,14 +80,36 @@ Bob-demo version.
    region.
 2. On FastAPI startup, `data_loader.py` reads all four files into memory once
    (`@lru_cache`) and fails fast with a clear error if the data hasn't been
-   generated yet.
+   generated yet. It then **re-anchors every date to today**
+   (`_anchor_dates_to_today`): the generator writes absolute dates as of the
+   day it ran, which on a deployed instance is *build* time, so without this
+   the "7-day forecast" rots one day into the past per day since deploy and
+   the app ends up warning about storms that already happened. One constant
+   offset is applied to all three datasets, preserving their relative
+   alignment exactly.
+3. **Weather is then replaced with live data.** `data_loader.get_weather_forecast`
+   asks `weather_live.py` for a real 7-day forecast from **Open-Meteo**
+   (keyless), keyed on the centroid of that region's assets and cached for 30
+   minutes, refreshed by a background task so no request ever waits on the
+   network. Any failure — offline, timeout, non-2xx, malformed — falls back to
+   the seeded synthetic forecast. Because every weather consumer in the app
+   (risk engine, planner, MCP tools, Copilot, UI) reads through this one
+   function, that single swap puts the whole system on live weather.
 3. `risk_engine.py` computes, per asset: a sensor anomaly score per metric
    (z-score-style deviation of the last 3 days vs. that asset's own 15-day
-   baseline, direction-aware), a weather risk term (full weight if a storm is
-   forecast for the asset's region within 7 days), and a historical incident
-   rate term (from the asset's age/type bracket) — summed into one 0-100
-   score with every component individually returned for the "Why This Score"
-   UI.
+   baseline, direction-aware), a **continuous** weather risk term, and a
+   historical incident rate term (from the asset's age/type bracket) — summed
+   into one 0-100 score with every component individually returned for the
+   "Why This Score" UI.
+
+   The weather term is deliberately **not** "storm somewhere this week → full
+   points", which gave every asset in a region the same 25 points regardless
+   of timing or condition. It scales with three things: how severe the worst
+   forecast day is (wind gusts, precipitation probability, **and heat** —
+   thermal derating on loaded equipment is a real failure driver the old
+   binary model scored at zero), how soon that day is, and how vulnerable the
+   specific asset is (ageing assets weighted up, N-1-redundant assets weighted
+   down).
 4. `maintenance_planner.py` ranks assets by `risk_score × grid_impact_severity`,
    groups the top N by region, and pulls each recommendation's target date
    forward to land before a forecast storm in that region.
@@ -111,11 +151,61 @@ directly in Python:
 
 ```bash
 python -c "
-import asyncio
+import asyncio, json
 from app.mcp.server import mcp
-print(asyncio.run(mcp.call_tool('get_at_risk_assets', {'region': 'Eastgate', 'min_tier': 'High', 'limit': 3})))
+from app.services import risk_engine
+
+# What IBM Bob sees over MCP...
+result = asyncio.run(mcp.call_tool('get_at_risk_assets', {'min_tier': 'Critical', 'limit': 3}))
+over_mcp = [(a['asset_id'], a['risk_score']) for a in json.loads(result[0].text)['assets']]
+
+# ...versus what the dashboard's /assets endpoint shows.
+dashboard = [(a['asset_id'], a['risk_score'])
+             for a in sorted(risk_engine.score_all_assets(), key=lambda a: -a['risk_score'])[:3]]
+
+print('over MCP :', over_mcp)
+print('dashboard:', dashboard)
+assert over_mcp == dashboard, 'MCP and the UI disagree'
+print('MATCH - one implementation, not two')
 "
 ```
+
+## The Operator Layer
+
+The risk engine answers *what will fail*. The operator layer answers *who is
+going to do something about it* — which is the half of "a prioritised
+maintenance and crew pre-positioning plan" that a ranked list alone does not
+deliver.
+
+**Alerts fire on a crossing, not on a state.** `live_simulator` re-scores every
+asset every 13 seconds. "Insert a row whenever tier == Critical" would produce
+thousands of duplicates a day and train every crew member to mute the app.
+`alert_monitor.py` stores each asset's last seen tier in `asset_tier_state` and
+acts only on a transition — raise on the way up into High/Critical, escalate in
+place on High→Critical, resolve on the way back down. Idempotency is enforced
+twice on purpose: the loop compares tiers, *and* the database holds a partial
+unique index allowing only one non-resolved alert per asset per company, so a
+restart mid-loop cannot double-alert.
+
+**Assignment is by scope, not by asset row.** `assignments(user_id, scope_type,
+scope_value)` covers a whole region in one row (the only granularity that is
+usable on a phone) or pins a single asset, in one table. An alert reaches
+whoever holds the region; administrators see everything in their company.
+
+**What is in Postgres, and what is not.** Only companies, users, assignments and
+alerts. Assets, sensor series, weather and scoring stay in memory where they
+already work — the two halves join on the `asset_id` string, which is stable
+because the generator is seeded. If the database is absent the app still boots
+and `/assets`, `/maintenance-plan`, `/copilot/ask` and the MCP server are
+unaffected; only the operator routes return 503.
+
+**The copilot can now act.** Signed in, it gains `get_my_alerts`,
+`get_my_assignments`, `get_alert_detail` and `acknowledge_alert` — the first
+tool in the project that mutates state. Identity is **overwritten** from the
+JWT inside `_execute_tool`, never merged from the model's arguments, so an
+injected instruction in a tool result cannot make it acknowledge another crew's
+work. Anonymous sessions are offered only the original read-only tools, which
+is what keeps the public web demo working with no account.
 
 ## Security Considerations
 
@@ -127,9 +217,25 @@ print(asyncio.run(mcp.call_tool('get_at_risk_assets', {'region': 'Eastgate', 'mi
   deterministic router needs no LLM API key. If one is ever added, it is read
   from an environment variable only, never hardcoded.
 - CORS is restricted to the known frontend dev origin(s), not wildcarded.
-- No authentication/authorization layer exists — explicitly out of scope for
-  this MVP and listed in `known_limitations`; not appropriate to fake for a
-  demo that has no real user accounts or sensitive data.
+- Passwords are stored as `hashlib.scrypt` digests with a per-user random salt,
+  and compared with `hmac.compare_digest`. Never plaintext, never logged.
+- **`company_id` always comes from the signed token, never from a path, query or
+  body parameter.** A multi-tenant system that trusts a client-supplied tenant
+  id is worse than a single-tenant one because it looks safe. This has a
+  dedicated test (`tests/test_operators.py::test_a_company_cannot_see_another_companys_alerts`).
+- Cross-tenant access fails as *not found*, not *forbidden* — a 403 would still
+  confirm the row exists.
+- `require_admin` is enforced server-side on every `/admin` route. Hiding a tab
+  in the UI is not access control, and both clients treat their role-based
+  navigation as convenience only.
+- The login route returns one message for "no such account" and "wrong
+  password", so it cannot be used to enumerate registered emails.
+- `JWT_SECRET` is read from the environment. Unset, the app uses an ephemeral
+  per-process key and says so — a visible nuisance, rather than the silent
+  catastrophe of a hardcoded default anyone reading the repo could forge.
+- The public read API (`/assets`, `/maintenance-plan`, `/copilot/ask`) is
+  deliberately unauthenticated so the deployed demo works without an account;
+  this is recorded as an explicit MVP boundary in `known_limitations`.
 
 ## Scalability Notes
 

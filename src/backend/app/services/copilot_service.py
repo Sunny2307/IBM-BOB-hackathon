@@ -87,12 +87,18 @@ def _format_plan_answer(plan: dict) -> str:
     return "Top prioritized maintenance actions:\n" + "\n".join(f"- {line}" for line in lines)
 
 
-async def ask(question: str, history: list[dict] | None = None) -> dict:
+async def ask(question: str, history: list[dict] | None = None, actor: dict | None = None) -> dict:
     """Public entry point used by the /copilot/ask route.
 
     Tries the optional Groq tool-calling LLM path first (only when
     LLM_PROVIDER=groq and GROQ_API_KEY are both set), passing along the
-    conversation history the frontend already tracks. Falls back to the
+    conversation history the frontend already tracks.
+
+    `actor` is the signed-in operator, or None for an anonymous session. When
+    present, the LLM additionally gets the operator tools (my alerts, my
+    assignments, acknowledge) bound to that identity. When absent — which is
+    how the public web dashboard calls this — only the original read-only
+    tools are offered, so the endpoint stays usable with no account. Falls back to the
     deterministic router on ANY exception from that path, so the app never
     depends on a live API key to answer correctly.
     """
@@ -102,7 +108,7 @@ async def ask(question: str, history: list[dict] | None = None) -> dict:
 
     if provider == "groq" and api_key:
         try:
-            return await llm_copilot.ask_llm(question, history)
+            return await llm_copilot.ask_llm(question, history, actor)
         except Exception as exc:  # noqa: BLE001 - deliberate: any failure at all falls back
             print(f"[copilot] LLM path failed ({exc.__class__.__name__}: {exc}); using deterministic router.")
 

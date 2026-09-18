@@ -39,13 +39,51 @@ flutter build apk --release --dart-define=API_BASE_URL=https://your-api-host
 
 Exactly the routes the web app calls — nothing new was added server-side:
 
-| Method | Path | Used by |
-|---|---|---|
-| `GET`  | `/assets` | Dashboard |
-| `GET`  | `/assets/{id}` | Asset detail |
-| `GET`  | `/assets/{id}/risk-breakdown` | Asset detail |
-| `GET`  | `/maintenance-plan` | Maintenance plan |
-| `POST` | `/copilot/ask` | Volt copilot |
+| Method | Path | Used by | Auth |
+|---|---|---|---|
+| `GET`  | `/assets` | Dashboard | public |
+| `GET`  | `/assets/{id}` | Asset detail | public |
+| `GET`  | `/assets/{id}/risk-breakdown` | Asset detail | public |
+| `GET`  | `/maintenance-plan` | Maintenance plan | public |
+| `POST` | `/copilot/ask` | Volt copilot | optional token |
+| `POST` | `/auth/login` | Sign-in | — |
+| `GET`  | `/alerts/mine` | Alert inbox + notification poll | bearer |
+| `POST` | `/alerts/{id}/ack` | "I'll take it" | bearer |
+| `GET`  | `/assignments/mine` | My assets | bearer |
+| `GET/POST` | `/admin/users`, `/admin/assignments` | Admin panel | bearer + admin |
+
+## Operator layer
+
+Signing in turns the app from a read-only dashboard into the thing a field
+engineer actually carries.
+
+- **Alerts** (`lib/pages/alerts_page.dart`) — the inbox the notification opens
+  into. Acknowledge with one tap, or hand the whole question to Volt, which is
+  pre-filled with the asset id rather than making you retype it on a phone.
+- **Notifications** (`lib/services/notifications.dart`) — **local**
+  notifications, not FCM. `AlertPoller` polls `/alerts/mine` every 30s and
+  raises them itself, so there is no Firebase project, no `google-services.json`
+  and no APNs certificate to set up before this works on a real device. The
+  trade-off, stated plainly: nothing arrives while the app is force-killed.
+- **The first poll of a session is silent.** Opening the app shows your backlog
+  in the list rather than firing nine notifications at once for alerts raised
+  while you were asleep. Covered by `test/operator_test.dart`.
+- **Admin panel** (`admin_users_page.dart`, `admin_assignments_page.dart`) —
+  team management and region coverage. Coverage leads with the *unassigned*
+  regions, because an alert in a region nobody owns reaches nobody.
+- **Role-based navigation** — admins get Dashboard / Alerts / Team / Coverage;
+  field crew get Alerts / Dashboard / Plan. The server enforces the same
+  boundary independently; these tabs are convenience, not access control.
+- **The token lives in `flutter_secure_storage`** (Keystore / Keychain), not
+  SharedPreferences. It is a bearer credential.
+
+Try it against the seeded demo data (`python scripts/seed_operators.py` in
+`src/backend`):
+
+```
+admin@grid.demo / AdminDemo2026   (administrator)
+ravi@grid.demo  / FieldDemo2026   (field crew)
+```
 
 ## Screens
 

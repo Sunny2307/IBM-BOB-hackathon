@@ -25,13 +25,25 @@ export function EmptyBlock({ message }: EmptyBlockProps) {
 
 interface ErrorBlockProps {
   message: string;
+  /** Optional retry. Pages backed by `useAsyncData` pass its `refetch` — a
+   * transient network failure should not need a full page reload to clear. */
+  onRetry?: () => void;
 }
 
-export function ErrorBlock({ message }: ErrorBlockProps) {
+export function ErrorBlock({ message, onRetry }: ErrorBlockProps) {
   return (
     <div className="border-l-2 border-risk-critical bg-carbon-white px-5 py-4">
       <p className="font-sans text-sm font-bold text-carbon-gray-100">Connection Failed</p>
       <p className="mt-1 text-sm text-carbon-gray-70">{message}</p>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-3 border-b border-carbon-blue-60 font-sans text-sm font-semibold text-carbon-blue-60 transition-colors hover:text-carbon-blue-70"
+        >
+          Try again
+        </button>
+      )}
     </div>
   );
 }

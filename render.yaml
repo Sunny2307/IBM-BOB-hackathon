@@ -17,11 +17,24 @@ services:
       # http://localhost:5173,https://your-app.vercel.app
       - key: FRONTEND_ORIGIN
         value: http://localhost:5173,https://bob-ai-hackathon-fantsactic-four.vercel.app
+      # Live 7-day weather from Open-Meteo (no API key needed). Set to
+      # "synthetic" to pin the demo to the seeded forecast instead.
+      - key: WEATHER_SOURCE
+        value: live
       - key: LLM_PROVIDER
         value: groq
       - key: GROQ_MODEL
         value: openai/gpt-oss-120b
       - key: GROQ_API_KEY
         sync: false # secret — set in the Render dashboard, not committed here
+      # Postgres for the operator layer (companies, users, assignments, alerts).
+      # Leave unset and the dashboard, risk engine, copilot and MCP server all
+      # still work — only sign-in and alerts report 503.
+      - key: DATABASE_URL
+        sync: false # secret — set in the Render dashboard
+      # Signing key for operator JWTs. Render generates one; rotating it signs
+      # everyone out, which is the correct behaviour for a leaked key.
+      - key: JWT_SECRET
+        generateValue: true
       - key: PYTHON_VERSION
         value: "3.11"

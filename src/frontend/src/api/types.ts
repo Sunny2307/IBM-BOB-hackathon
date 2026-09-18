@@ -107,3 +107,71 @@ export interface CopilotHistoryTurn {
   role: "user" | "assistant";
   content: string;
 }
+
+/** GET /health — also reports which weather feed the risk model is running on. */
+export interface Health {
+  status: string;
+  last_updated: string | null;
+  weather_source: string;
+}
+
+// ---------------------------------------------------------------------------
+// Operator layer — companies, users, assignments, alerts.
+// Mirrors the operator models in src/backend/app/models/schemas.py.
+// ---------------------------------------------------------------------------
+
+export type UserRole = "admin" | "field";
+export type AlertStatus = "open" | "acknowledged" | "resolved";
+export type AlertTier = "High" | "Critical";
+
+/** POST /auth/login — identity plus the bearer token. */
+export interface AuthSession {
+  access_token: string;
+  token_type: string;
+  user_id: number;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  company_id: number;
+  company_name: string;
+}
+
+/** One raised alert: an asset crossed up into High or Critical. */
+export interface Alert {
+  id: number;
+  asset_id: string;
+  asset_name: string;
+  region: string;
+  tier: AlertTier;
+  previous_tier: string | null;
+  risk_score: number;
+  headline: string;
+  status: AlertStatus;
+  raised_at: string;
+  acknowledged_by_name: string | null;
+  acknowledged_at: string | null;
+}
+
+export interface AlertInbox {
+  count: number;
+  /** e.g. "assets assigned to you" or "all company alerts (admin)". */
+  scope: string;
+  alerts: Alert[];
+}
+
+export interface OperatorUser {
+  id: number;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  is_active: boolean;
+}
+
+export interface Assignment {
+  id: number;
+  user_id: number;
+  user_name: string;
+  /** "region" | "asset" */
+  scope_type: string;
+  scope_value: string;
+}

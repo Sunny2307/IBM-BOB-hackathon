@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- The app talks to the Grid Failure Advisor API and loads OpenStreetMap tiles. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Required from Android 13 (API 33) to show a risk alert. Requested at
+         runtime by NotificationService.init(); declining it leaves the in-app
+         alert list fully working, it just stops the device notification. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- flutter_local_notifications: lets a notification survive a reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <application
         android:label="Grid Failure Advisor"

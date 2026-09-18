@@ -44,6 +44,11 @@ deterministic keyword router if no LLM key is configured.
 
 ## ✨ Key Features
 
+- **Live weather, not a fixture** — each region's 7-day forecast is pulled from the **Open-Meteo API** (no key, no account) at runtime and cached for 30 minutes, so the weather half of the risk model reflects the actual sky; any fetch failure falls back to the seeded forecast automatically
+- **Continuous, asset-specific weather risk** — severity scales with how bad the worst forecast day is, **how soon** it is, and how vulnerable that particular asset is (age, N-1 redundancy). Heat counts too: a 98°F day stressing loaded equipment is scored, not ignored
+- **Alerts that reach a named human** — a background monitor raises an alert the moment an asset *crosses up* into High or Critical (not merely *is* Critical, which would re-fire every 13 seconds), routes it to whoever is assigned that region, and pushes a device notification to their phone. They acknowledge it with one tap, and the plan then records who owns the response
+- **Multi-tenant operator layer** — companies, administrators and field crew in Postgres, with email/password sign-in (scrypt), JWT roles, and company scoping taken from the signed token on every query, never from the request
+- **A copilot that can act, not just answer** — signed in, the Grid Copilot gains four more grounded tools including `acknowledge_alert`, so an operator can say *"I'll take alert 9, and tell me why it fired"* and have it done. Identity is bound server-side from the JWT, so the model cannot act as anyone else even if a tool result tries to talk it into doing so
 - **Explainable risk scoring** — every point of every asset's 0-100 score traces to a named factor (per-sensor anomaly, weather risk, historical incident rate) with a plain-language explanation, shown in a "Why This Score" panel
 - **Sensor anomaly detection** across temperature, vibration, partial discharge, and oil quality, measured against each asset's own 15-day baseline
 - **Weather-timed maintenance & crew pre-positioning plan** — recommended dates are pulled forward to land before a forecast storm in the asset's region
@@ -62,6 +67,7 @@ deterministic keyword router if no LLM key is configured.
 | **Frameworks** | FastAPI, React, Vite, Tailwind CSS |
 | **IBM Technologies** | IBM Bob, Model Context Protocol (MCP) |
 | **Databases** | None — in-memory, generated JSON/CSV (zero infra by design) |
+| **APIs** | Open-Meteo (live 7-day weather forecast, keyless) |
 | **Other** | Uvicorn, Pydantic, httpx, Groq API (openai/gpt-oss-120b, tool-calling, free tier), Leaflet / react-leaflet, Recharts, Playwright (used to verify the UI end-to-end) |
 
 ---
@@ -132,9 +138,14 @@ Open **http://localhost:5173** for the app. Interactive API docs at
 
 ## ⚠️ Known Limitations
 
-- All data is synthetic (deterministic seeded generator, plus a small bounded live-drift simulator) — no real utility dataset was available in the build window
+- **Weather is real and live** (Open-Meteo); sensor telemetry and historical incidents are synthetic (deterministic seeded generator plus a bounded live-drift simulator) — no real utility telemetry dataset was available in the build window. The dashboard states which feed is which rather than leaving it to be asked about
+- The risk score is a **relative priority index (0-100), not a failure probability** — it ranks what to act on first; it is not calibrated against observed failure rates
+- **No lead-time estimate yet**: the score says an asset is degrading, not that it will fail in N days. Trend extrapolation to a threshold crossing is the next step
+- The historical-incident term is derived from asset age and class, not yet from the incident records directly
 - Risk scoring is intentionally rule-based/statistical, not a trained ML model — a deliberate explainability and time-budget decision, documented in `docs/solution-overview.md`, and designed to be upgradeable once real failure labels exist
-- No authentication or persistent database in this MVP — data lives in memory for the life of the process
+- **The read API is public; the operator API is authenticated.** `/assets`, `/maintenance-plan` and `/copilot/ask` deliberately need no account, so a judge can open the deployed demo and the dashboard just works. Everything under `/auth`, `/alerts` and `/admin` requires a token. A production deployment would put the read API behind the same boundary
+- Mobile notifications are **local** (the app polls `/alerts/mine` and raises them itself), not FCM push — no Firebase project is needed to run it, but nothing arrives while the app is force-killed. The `alerts` table is where real push plugs in
+- Sensor telemetry and historical incidents remain synthetic; **weather is live** (Open-Meteo). The dashboard states which feed is which
 - Also runs locally via `docs/setup-guide.md`, in case the free-tier live deploy is asleep/unreachable — see `demo/live-demo-url.txt`
 - The Grid Copilot's LLM path requires a free Groq API key (`GROQ_API_KEY` in `src/backend/.env`); without one it automatically falls back to the original deterministic keyword router, which covers the three core query types (highest risk, why an asset is risky, maintenance plan) but not open-ended follow-ups
 

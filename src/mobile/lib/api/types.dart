@@ -363,3 +363,284 @@ class CopilotHistoryTurn {
 
   Map<String, dynamic> toJson() => {'role': role, 'content': content};
 }
+
+
+// ---------------------------------------------------------------------------
+// Operator layer — the signed-in half of the app.
+//
+// Mirrors the operator models in src/backend/app/models/schemas.py. These are
+// the only models behind authentication; everything above is public.
+// ---------------------------------------------------------------------------
+
+/// What a signed-in person is allowed to do. Mirrors the backend's
+/// `Literal["admin","field"]`.
+enum UserRole {
+  admin('admin'),
+  field('field');
+
+  const UserRole(this.wire);
+
+  final String wire;
+
+  static UserRole fromJson(Object? value) {
+    final raw = value?.toString();
+    for (final role in UserRole.values) {
+      if (role.wire == raw) return role;
+    }
+    // Unknown role degrades to the LEAST privileged, never the most.
+    return UserRole.field;
+  }
+
+  String get label => this == UserRole.admin ? 'Administrator' : 'Field crew';
+}
+
+/// Where an alert is in its lifecycle.
+enum AlertStatus {
+  open('open'),
+  acknowledged('acknowledged'),
+  resolved('resolved');
+
+  const AlertStatus(this.wire);
+
+  final String wire;
+
+  static AlertStatus fromJson(Object? value) {
+    final raw = value?.toString();
+    for (final s in AlertStatus.values) {
+      if (s.wire == raw) return s;
+    }
+    return AlertStatus.open;
+  }
+}
+
+/// The result of POST /auth/login — identity plus the bearer token.
+class AuthSession {
+  const AuthSession({
+    required this.accessToken,
+    required this.userId,
+    required this.email,
+    required this.fullName,
+    required this.role,
+    required this.companyId,
+    required this.companyName,
+  });
+
+  factory AuthSession.fromJson(Map<String, dynamic> json) => AuthSession(
+        accessToken: _toStr(json['access_token']),
+        userId: _toInt(json['user_id']),
+        email: _toStr(json['email']),
+        fullName: _toStr(json['full_name']),
+        role: UserRole.fromJson(json['role']),
+        companyId: _toInt(json['company_id']),
+        companyName: _toStr(json['company_name']),
+      );
+
+  final String accessToken;
+  final int userId;
+  final String email;
+  final String fullName;
+  final UserRole role;
+  final int companyId;
+  final String companyName;
+
+  bool get isAdmin => role == UserRole.admin;
+
+  Map<String, dynamic> toJson() => {
+        'access_token': accessToken,
+        'user_id': userId,
+        'email': email,
+        'full_name': fullName,
+        'role': role.wire,
+        'company_id': companyId,
+        'company_name': companyName,
+      };
+}
+
+/// One raised alert: an asset crossed up into High or Critical.
+class Alert {
+  const Alert({
+    required this.id,
+    required this.assetId,
+    required this.assetName,
+    required this.region,
+    required this.tier,
+    required this.previousTier,
+    required this.riskScore,
+    required this.headline,
+    required this.status,
+    required this.raisedAt,
+    required this.acknowledgedByName,
+    required this.acknowledgedAt,
+  });
+
+  factory Alert.fromJson(Map<String, dynamic> json) => Alert(
+        id: _toInt(json['id']),
+        assetId: _toStr(json['asset_id']),
+        assetName: _toStr(json['asset_name']),
+        region: _toStr(json['region']),
+        tier: RiskTier.fromJson(json['tier']),
+        previousTier: json['previous_tier']?.toString(),
+        riskScore: _toDouble(json['risk_score']),
+        headline: _toStr(json['headline']),
+        status: AlertStatus.fromJson(json['status']),
+        raisedAt: DateTime.tryParse(_toStr(json['raised_at'])),
+        acknowledgedByName: json['acknowledged_by_name']?.toString(),
+        acknowledgedAt: DateTime.tryParse(_toStr(json['acknowledged_at'])),
+      );
+
+  final int id;
+  final String assetId;
+  final String assetName;
+  final String region;
+  final RiskTier tier;
+  final String? previousTier;
+  final double riskScore;
+  final String headline;
+  final AlertStatus status;
+  final DateTime? raisedAt;
+  final String? acknowledgedByName;
+  final DateTime? acknowledgedAt;
+
+  bool get isAcknowledged => status == AlertStatus.acknowledged;
+}
+
+/// GET /alerts/mine — the list plus a description of whose alerts these are.
+class AlertInbox {
+  const AlertInbox({required this.count, required this.scope, required this.alerts});
+
+  factory AlertInbox.fromJson(Map<String, dynamic> json) => AlertInbox(
+        count: _toInt(json['count']),
+        scope: _toStr(json['scope']),
+        alerts: _toMapList(json['alerts']).map(Alert.fromJson).toList(),
+      );
+
+  final int count;
+
+  /// e.g. "assets assigned to you" or "all company alerts (admin)".
+  final String scope;
+  final List<Alert> alerts;
+}
+
+/// GET /alerts/{id} — the alert plus the risk breakdown that caused it.
+class AlertDetail {
+  const AlertDetail({required this.alert, required this.riskBreakdown});
+
+  factory AlertDetail.fromJson(Map<String, dynamic> json) {
+    final breakdown = json['risk_breakdown'];
+    return AlertDetail(
+      alert: Alert.fromJson(
+        (json['alert'] as Map?)?.cast<String, dynamic>() ?? const {},
+      ),
+      riskBreakdown: breakdown is Map && !breakdown.containsKey('error')
+          ? RiskBreakdown.fromJson(breakdown.cast<String, dynamic>())
+          : null,
+    );
+  }
+
+  final Alert alert;
+  final RiskBreakdown? riskBreakdown;
+}
+
+/// A person in the operator's company.
+class OperatorUser {
+  const OperatorUser({
+    required this.id,
+    required this.email,
+    required this.fullName,
+    required this.role,
+    required this.isActive,
+  });
+
+  factory OperatorUser.fromJson(Map<String, dynamic> json) => OperatorUser(
+        id: _toInt(json['id']),
+        email: _toStr(json['email']),
+        fullName: _toStr(json['full_name']),
+        role: UserRole.fromJson(json['role']),
+        isActive: _toBool(json['is_active']),
+      );
+
+  final int id;
+  final String email;
+  final String fullName;
+  final UserRole role;
+  final bool isActive;
+}
+
+/// Who is responsible for which region (or single asset).
+class Assignment {
+  const Assignment({
+    required this.id,
+    required this.userId,
+    required this.userName,
+    required this.scopeType,
+    required this.scopeValue,
+  });
+
+  factory Assignment.fromJson(Map<String, dynamic> json) => Assignment(
+        id: _toInt(json['id']),
+        userId: _toInt(json['user_id']),
+        userName: _toStr(json['user_name']),
+        scopeType: _toStr(json['scope_type']),
+        scopeValue: _toStr(json['scope_value']),
+      );
+
+  final int id;
+  final int userId;
+  final String userName;
+
+  /// `region` | `asset`
+  final String scopeType;
+  final String scopeValue;
+}
+
+/// GET /assignments/mine — the assets this operator owns.
+class MyAssignments {
+  const MyAssignments({
+    required this.count,
+    required this.regions,
+    required this.assets,
+    required this.note,
+  });
+
+  factory MyAssignments.fromJson(Map<String, dynamic> json) => MyAssignments(
+        count: _toInt(json['count']),
+        regions: (json['regions'] as List?)?.map((e) => '$e').toList() ?? const [],
+        assets: _toMapList(json['assets']).map(AssignedAsset.fromJson).toList(),
+        note: json['note']?.toString(),
+      );
+
+  final int count;
+  final List<String> regions;
+  final List<AssignedAsset> assets;
+
+  /// Present only when nothing is assigned yet, explaining what to do about it.
+  final String? note;
+}
+
+/// The trimmed asset shape /assignments/mine returns (not the full Asset).
+class AssignedAsset {
+  const AssignedAsset({
+    required this.assetId,
+    required this.name,
+    required this.region,
+    required this.riskScore,
+    required this.riskTier,
+    required this.customersServed,
+  });
+
+  factory AssignedAsset.fromJson(Map<String, dynamic> json) => AssignedAsset(
+        assetId: _toStr(json['asset_id']),
+        name: _toStr(json['name']),
+        region: _toStr(json['region']),
+        riskScore: _toDouble(json['risk_score']),
+        riskTier: RiskTier.fromJson(json['risk_tier']),
+        customersServed: _toInt(json['customers_served']),
+      );
+
+  final String assetId;
+  final String name;
+  final String region;
+  final double riskScore;
+  final RiskTier riskTier;
+  final int customersServed;
+}

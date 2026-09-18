@@ -15,17 +15,30 @@ grounded in the same live data, not a canned response.
 ## How It Works
 
 1. **Data fusion.** Each asset's last 30 days of sensor readings (temperature,
-   vibration, partial discharge, oil quality), its region's 7-day weather
-   forecast, and the fleet's historical incident record are loaded into one
-   in-memory view at startup.
+   vibration, partial discharge, oil quality), its region's **live 7-day
+   weather forecast**, and the fleet's historical incident record are fused
+   into one in-memory view. The weather is real — pulled per region from the
+   keyless Open-Meteo API at runtime and cached for 30 minutes — so the model
+   responds to the actual sky, not to a fixture written when someone last ran
+   a script. Generated dates are re-anchored to today on load, so a deployed
+   instance never drifts into warning about storms that already happened.
 2. **Explainable scoring, not a black box.** For each asset, the risk engine
    computes: a per-sensor anomaly score (how far the last 3 days deviate from
    that asset's own 15-day baseline, direction-aware — rising partial
-   discharge is bad, falling oil quality is bad), a weather-risk term (full
-   weight if a storm is forecast for that asset's region in the next 7 days),
-   and a historical-incident-rate term (based on incident frequency for
-   similar-age, similar-type assets). These are **added**, not blended into
-   an opaque single number — every point is traceable to a named factor.
+   discharge is bad, falling oil quality is bad), a **continuous**
+   weather-risk term, and a historical-incident-rate term
+   (based on incident frequency for similar-age, similar-type assets). These
+   are **added**, not blended into an opaque single number — every point is
+   traceable to a named factor.
+
+   The weather term is worth spelling out, because the naive version is a
+   trap: "is a storm forecast this week, yes/no" hands every asset in a
+   region the same points whether the storm is tomorrow or Friday, and
+   whether the asset is a new redundant substation or a 40-year-old
+   transformer with no backup. Ours scales with the severity of the worst
+   forecast day (wind gusts, precipitation, **and heat** — thermal derating
+   on loaded equipment is a real failure driver a storm flag scores at zero),
+   how soon that day is, and how vulnerable that specific asset is.
 3. **Prioritization, not just scoring.** A high risk score on a
    low-consequence asset matters less than a moderate risk score on a
    transformer feeding a hospital. The maintenance planner multiplies
@@ -63,7 +76,8 @@ separately-implemented, disconnected "AI demo" bolted on afterward.
 | Rule-based/statistical risk scoring instead of a trained ML model | Defensible under judge Q&A in one sentence, needs no training-data legitimacy argument, and every number is traceable to a named factor — explicitly designed to be upgraded to a trained model once real historical failure labels exist (the service-layer interface would not need to change) |
 | Deterministic keyword-intent router for the Grid Copilot, no required LLM key | The live demo must never fail because of a missing API key or no internet access; correctness comes from real tool calls against real data, not from an LLM's judgment |
 | MCP server and `/copilot/ask` share one implementation (`grid_tools.py`) | This is what makes "IBM Bob integration" a real, judge-verifiable claim instead of a README mention — there is exactly one definition of "what counts as at-risk" |
-| Synthetic but internally-consistent data, generated deterministically | No real utility dataset was available in the time available; the generator deliberately guarantees the top-ranked asset has both a genuine degrading sensor trend *and* an upcoming storm in its region, so the core narrative is verifiably true in the running app on every run, not just claimed in a slide |
+| Live weather from Open-Meteo, synthetic sensors | Weather is the one input we could make genuinely real with no key, no account, and no data-sharing agreement — so we did, and every consumer reads it through one function. Utility sensor telemetry has no public equivalent, so it stays synthetic and the UI says so |
+| Synthetic but internally-consistent sensor/incident data, generated deterministically | No real utility telemetry dataset was available in the time available; the generator gives the top-ranked asset a genuine degrading sensor trend (and, under `WEATHER_SOURCE=synthetic`, a guaranteed storm in its region), so the core narrative is verifiably true in the running app, not just claimed in a slide. Dates are re-anchored to today on load so this stays true however old the build is |
 | In-memory JSON/CSV instead of a database | Zero infrastructure to fail during a live demo; fully reproducible from a single committed, re-runnable generator script |
 
 ## What the User Experience Looks Like

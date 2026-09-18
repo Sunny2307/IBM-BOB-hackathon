@@ -60,6 +60,20 @@ class ApiClient {
 
   final http.Client _http;
 
+  /// Bearer token for the operator endpoints, set by AuthController on sign-in
+  /// and cleared on sign-out or on any 401. Held here rather than passed per
+  /// call so a caller can never forget it — and so there is exactly one place
+  /// that knows the session exists.
+  String? _authToken;
+
+  /// Invoked when the server rejects our token, so the app can drop to the
+  /// login screen instead of silently showing an empty inbox.
+  void Function()? onUnauthorized;
+
+  set authToken(String? token) => _authToken = token;
+
+  bool get isAuthenticated => _authToken != null;
+
   /// Per-attempt budget for the read endpoints. Deliberately short: measured
   /// against the dev tunnel, a healthy response lands in well under 1.2s, and
   /// anything slower is a dropped request that will never arrive. Failing fast
@@ -77,10 +91,21 @@ class ApiClient {
     String path, {
     String method = 'GET',
     Object? body,
+    bool authenticated = false,
   }) async {
     final uri = Uri.parse('$apiBaseUrl$path');
     final headers = {'Content-Type': 'application/json'};
-    final isGet = method != 'POST';
+
+    // The copilot takes the token when we have one (it unlocks the operator
+    // tools) but works fine without it, so it asks for `authenticated: false`
+    // and still gets the header if a session exists.
+    final token = _authToken;
+    if (token != null) headers['Authorization'] = 'Bearer $token';
+    if (authenticated && token == null) {
+      throw ApiError('Not signed in.', 401);
+    }
+
+    final isGet = method != 'POST' && method != 'DELETE';
 
     // The dev tunnel drops roughly one request in three outright — they hang
     // forever rather than erroring — while every response that does arrive
@@ -99,11 +124,13 @@ class ApiClient {
 
     for (var attempt = 0; attempt < attempts; attempt++) {
       try {
-        response = isGet
-            ? await _http.get(uri, headers: headers).timeout(budget)
-            : await _http
-                .post(uri, headers: headers, body: jsonEncode(body))
-                .timeout(budget);
+        response = switch (method) {
+          'POST' => await _http
+              .post(uri, headers: headers, body: jsonEncode(body))
+              .timeout(budget),
+          'DELETE' => await _http.delete(uri, headers: headers).timeout(budget),
+          _ => await _http.get(uri, headers: headers).timeout(budget),
+        };
         // 502/503/504 are the tunnel giving up, not the API answering.
         if (response.statusCode < 502 || response.statusCode > 504) break;
         lastFailure = ApiError(
@@ -128,18 +155,39 @@ class ApiClient {
       );
     }
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiError(
-        '${response.statusCode} ${response.reasonPhrase ?? ''} on $path'.trim(),
-        response.statusCode,
-      );
+    if (response.statusCode == 401) {
+      // Expired or revoked. Drop the session so the UI stops pretending the
+      // user is signed in, and surface a message they can act on.
+      _authToken = null;
+      onUnauthorized?.call();
+      throw ApiError('Your session has expired. Please sign in again.', 401);
     }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiError(_errorMessage(response, path), response.statusCode);
+    }
+
+    if (response.statusCode == 204 || response.bodyBytes.isEmpty) return null;
 
     try {
       return jsonDecode(utf8.decode(response.bodyBytes));
     } catch (_) {
       throw ApiError('Malformed JSON response from $path');
     }
+  }
+
+  /// FastAPI puts the useful text in `detail`. Showing "409" to a user who
+  /// typed a duplicate email is useless; showing the server's sentence is not.
+  String _errorMessage(http.Response response, String path) {
+    try {
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (decoded is Map && decoded['detail'] is String) {
+        return decoded['detail'] as String;
+      }
+    } catch (_) {
+      // fall through to the generic message
+    }
+    return '${response.statusCode} ${response.reasonPhrase ?? ''} on $path'.trim();
   }
 
   Future<List<Asset>> getAssets() async {
@@ -181,6 +229,93 @@ class ApiClient {
     );
     return CopilotResponse.fromJson((data as Map).cast<String, dynamic>());
   }
+
+  // ---------------------------------------------------------------- operator
+
+  Future<AuthSession> login(String email, String password) async {
+    final data = await _request(
+      '/auth/login',
+      method: 'POST',
+      body: {'email': email, 'password': password},
+    );
+    return AuthSession.fromJson((data as Map).cast<String, dynamic>());
+  }
+
+  Future<AlertInbox> getMyAlerts({String status = 'open'}) async {
+    final data = await _request('/alerts/mine?status=$status', authenticated: true);
+    return AlertInbox.fromJson((data as Map).cast<String, dynamic>());
+  }
+
+  Future<AlertDetail> getAlertDetail(int alertId) async {
+    final data = await _request('/alerts/$alertId', authenticated: true);
+    return AlertDetail.fromJson((data as Map).cast<String, dynamic>());
+  }
+
+  Future<void> acknowledgeAlert(int alertId) =>
+      _request('/alerts/$alertId/ack', method: 'POST', authenticated: true);
+
+  Future<MyAssignments> getMyAssignments() async {
+    final data = await _request('/assignments/mine', authenticated: true);
+    return MyAssignments.fromJson((data as Map).cast<String, dynamic>());
+  }
+
+  // ------------------------------------------------------------------- admin
+
+  Future<List<OperatorUser>> getUsers() async {
+    final data = await _request('/admin/users', authenticated: true);
+    if (data is! List) throw ApiError('Expected a list from /admin/users');
+    return data
+        .whereType<Map>()
+        .map((e) => OperatorUser.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+
+  Future<OperatorUser> createUser({
+    required String email,
+    required String fullName,
+    required String password,
+    required UserRole role,
+  }) async {
+    final data = await _request(
+      '/admin/users',
+      method: 'POST',
+      authenticated: true,
+      body: {
+        'email': email,
+        'full_name': fullName,
+        'password': password,
+        'role': role.wire,
+      },
+    );
+    return OperatorUser.fromJson((data as Map).cast<String, dynamic>());
+  }
+
+  Future<List<Assignment>> getAssignments() async {
+    final data = await _request('/admin/assignments', authenticated: true);
+    if (data is! List) throw ApiError('Expected a list from /admin/assignments');
+    return data
+        .whereType<Map>()
+        .map((e) => Assignment.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+
+  Future<void> createAssignment({
+    required int userId,
+    required String scopeValue,
+    String scopeType = 'region',
+  }) =>
+      _request(
+        '/admin/assignments',
+        method: 'POST',
+        authenticated: true,
+        body: {'user_id': userId, 'scope_type': scopeType, 'scope_value': scopeValue},
+      );
+
+  Future<void> deleteAssignment(int assignmentId) => _request(
+        '/admin/assignments/$assignmentId',
+        method: 'DELETE',
+        authenticated: true,
+      );
 
   void close() => _http.close();
 }

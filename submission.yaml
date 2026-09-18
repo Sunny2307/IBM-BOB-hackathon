@@ -48,6 +48,12 @@ submission:
     depends on a live third-party API key to work correctly.
 
   key_features:
+    - "Alerts that reach a named human: a background monitor raises an alert the moment an asset CROSSES UP into High or Critical (not merely is Critical, which would re-fire every 13 seconds), routes it to whoever is assigned that region, and the Flutter app raises a device notification. One tap acknowledges it, and the record then shows who owns the response - closing the crew pre-positioning half of the problem statement that a ranked list alone leaves open"
+    - "Multi-tenant operator layer on Postgres: companies, administrators and field crew, with scrypt-hashed passwords, JWT roles, and company scoping taken from the signed token on every query rather than from the request - with a dedicated cross-tenant isolation test"
+    - "A copilot that can act, not just answer: signed in, the Grid Copilot gains four more grounded tools including acknowledge_alert, so an operator can say \"I'll take alert 9 and tell me why it fired\" and have it done. Identity is bound server-side from the JWT, so an injected instruction in a tool result cannot make the model act as another crew member"
+    - "Degrades cleanly: with no DATABASE_URL the dashboard, risk engine, copilot and MCP server all still work and only the operator routes report 503 - the same discipline as the weather and LLM fallbacks"
+    - "Live 7-day weather per region from the keyless Open-Meteo API, cached and background-refreshed, with automatic fallback to a seeded forecast on any failure - every weather consumer in the app (risk engine, planner, MCP tools, Copilot, UI) reads through one function, so the whole system runs on real weather"
+    - "Continuous, asset-specific weather risk: severity scales with how bad the worst forecast day is, how soon it is, and how vulnerable that asset is (age, N-1 redundancy) - and heat counts, so a 98F day stressing loaded equipment is scored rather than ignored by a storm flag"
     - "Explainable composite risk scoring: every point on a 0-100 score is traced to a named factor (sensor anomaly per metric, weather risk, historical incident rate) with a plain-language explanation, not a black-box prediction"
     - "Sensor anomaly detection across 4 metrics (temperature, vibration, partial discharge, oil quality) using each asset's own 15-day baseline, surfacing degradation signatures before failure"
     - "Weather-timed maintenance and crew pre-positioning plan that pulls recommended action dates forward ahead of a forecast storm in the asset's region"
@@ -57,10 +63,10 @@ submission:
     - "Background live-data simulator that drifts sensor readings and risk scores every ~13 seconds, so the dashboard visibly updates without a restart"
 
   tech_stack:
-    languages: ["Python", "TypeScript"]
-    frameworks: ["FastAPI", "React", "Vite", "Tailwind CSS"]
+    languages: ["Python", "TypeScript", "Dart"]
+    frameworks: ["FastAPI", "React", "Vite", "Tailwind CSS", "Flutter"]
     ibm_technologies: ["IBM Bob", "Model Context Protocol (MCP)"]
-    databases: []
+    databases: ["PostgreSQL (Neon serverless) - operator layer only"]
     other: ["Uvicorn", "Pydantic", "httpx", "Groq API (openai/gpt-oss-120b, tool-calling, free tier)", "Leaflet / react-leaflet", "Recharts", "pytest", "Playwright (verification)"]
 
   what_we_are_most_proud_of: >
@@ -75,6 +81,14 @@ submission:
     call get_at_risk_assets over MCP and get the exact numbers the dashboard shows.
 
   known_limitations: >
+    The read API (/assets, /maintenance-plan, /copilot/ask) is deliberately
+    public so a judge can open the deployed demo with no account; everything
+    under /auth, /alerts and /admin requires a token. A production deployment
+    would put the read API behind the same boundary. Mobile notifications are
+    LOCAL (the app polls /alerts/mine and raises them itself) rather than FCM
+    push, so no Firebase project is needed to run it but nothing arrives while
+    the app is force-killed - the alerts table is where real push plugs in.
+    Sensor telemetry and historical incidents remain synthetic; weather is live.
     All data is synthetic (deterministic, seeded generator plus a small bounded
     live-drift simulator) — no real utility dataset was available in the build
     window; the risk model is intentionally rule-based/statistical rather than a

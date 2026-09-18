@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAssets } from "../api/client";
+import { getAssets, getHealth } from "../api/client";
 import { MOCK_ASSETS } from "../api/mockData";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { RiskBadge } from "../components/RiskBadge";
@@ -25,6 +25,14 @@ export function Dashboard() {
     lastUpdatedAt,
     refetch,
   } = useAsyncData(getAssets, () => MOCK_ASSETS, [], { pollIntervalMs: POLL_INTERVAL_MS });
+
+  // Where the numbers come from, stated on the page rather than left to be
+  // asked about: weather is a real live feed, the rest is generated.
+  const { data: health } = useAsyncData(
+    getHealth,
+    () => ({ status: "ok", last_updated: null, weather_source: "synthetic" }),
+    [],
+  );
 
   const [regionFilter, setRegionFilter] = useState<string>("all");
   const [tierFilter, setTierFilter] = useState<string>("all");
@@ -82,6 +90,7 @@ export function Dashboard() {
           <p className="mt-3 font-serif text-base text-carbon-gray-70 italic">
             All monitored grid assets, ranked by predicted failure risk.
           </p>
+          {health && <DataSourceLine weatherSource={health.weather_source} />}
         </div>
         {assets && (
           <LastUpdated timestamp={lastUpdatedAt} isRefreshing={isRefreshing} onRefresh={refetch} />
@@ -268,6 +277,28 @@ function PageButton({
     >
       {children}
     </button>
+  );
+}
+
+/** Names each input feed so nobody has to guess which numbers are real. */
+function DataSourceLine({ weatherSource }: { weatherSource: string }) {
+  const isLive = weatherSource.startsWith("live");
+  return (
+    <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-carbon-gray-60">
+      <span className="inline-flex items-center gap-1.5">
+        <span
+          aria-hidden
+          className={`inline-block h-1.5 w-1.5 rounded-full ${
+            isLive ? "animate-pulse bg-risk-low" : "bg-carbon-gray-30"
+          }`}
+        />
+        Weather: {weatherSource}
+      </span>
+      <span aria-hidden>·</span>
+      <span>Sensors: simulated telemetry</span>
+      <span aria-hidden>·</span>
+      <span>Incidents: synthetic</span>
+    </p>
   );
 }
 

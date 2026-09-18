@@ -1,13 +1,30 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { CopilotPanel } from "./CopilotPanel";
+import { useAuth } from "../auth/AuthContext";
 
-const NAV_ITEMS = [
+const PUBLIC_NAV = [
   { to: "/", label: "Dashboard", end: true },
   { to: "/maintenance-plan", label: "Maintenance Plan", end: false },
 ];
 
+const OPERATOR_NAV = [{ to: "/alerts", label: "Alerts", end: false }];
+
+const ADMIN_NAV = [
+  { to: "/admin/users", label: "Team", end: false },
+  { to: "/admin/assignments", label: "Coverage", end: false },
+];
+
 export function Layout() {
   const location = useLocation();
+  const { session, isAdmin, signOut } = useAuth();
+
+  // Navigation follows the role. The server enforces the same boundary
+  // independently — these links are convenience, not access control.
+  const navItems = [
+    ...PUBLIC_NAV,
+    ...(session ? OPERATOR_NAV : []),
+    ...(isAdmin ? ADMIN_NAV : []),
+  ];
 
   return (
     <div className="min-h-screen bg-carbon-gray-10">
@@ -21,8 +38,8 @@ export function Layout() {
             <span className="kicker hidden sm:inline">Outage Prediction &amp; Maintenance Planning</span>
           </div>
 
-          <nav className="flex items-baseline gap-6">
-            {NAV_ITEMS.map((item) => (
+          <nav className="flex flex-wrap items-baseline gap-6">
+            {navItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -38,6 +55,28 @@ export function Layout() {
                 {item.label}
               </NavLink>
             ))}
+
+            {session ? (
+              <span className="flex items-baseline gap-3 border-l border-carbon-gray-20 pl-6">
+                <span className="font-mono text-xs text-carbon-gray-60">
+                  {session.full_name} · {session.role === "admin" ? "Admin" : "Field"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => signOut()}
+                  className="border-b border-transparent py-1 font-sans text-sm tracking-wide text-carbon-gray-60 transition-colors hover:border-carbon-gray-30 hover:text-carbon-gray-100"
+                >
+                  Sign out
+                </button>
+              </span>
+            ) : (
+              <Link
+                to="/login"
+                className="border-b border-transparent py-1 font-sans text-sm tracking-wide text-carbon-gray-60 transition-colors hover:border-carbon-gray-30 hover:text-carbon-gray-100"
+              >
+                Sign in
+              </Link>
+            )}
           </nav>
         </div>
       </header>
