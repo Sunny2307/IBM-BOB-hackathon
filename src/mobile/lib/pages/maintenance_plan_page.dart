@@ -7,12 +7,11 @@ import '../api/types.dart';
 import '../state/async_data.dart';
 import '../theme/app_theme.dart';
 import '../util/formatting.dart';
+import '../widgets/recommended_action.dart' show urgentWindowDays;
 import '../widgets/risk_badge.dart';
 import '../widgets/section_label.dart';
 import '../widgets/skeleton.dart';
 import '../widgets/status_states.dart';
-
-const _urgentWindowDays = 7;
 
 /// Port of the web frontend's `MaintenancePlan` page: region cards with a
 /// weather summary and the prioritized action list underneath.
@@ -170,7 +169,7 @@ class _MaintenanceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final days = daysUntil(item.recommendedByDate);
-    final isUrgent = days <= _urgentWindowDays;
+    final isUrgent = days <= urgentWindowDays;
     final dueColor = isUrgent ? AppColors.riskCritical : AppColors.gray100;
 
     return Padding(

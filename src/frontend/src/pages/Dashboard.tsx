@@ -1,10 +1,9 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
 import { getAssets, getHealth } from "../api/client";
 import { MOCK_ASSETS } from "../api/mockData";
 import { useAsyncData } from "../hooks/useAsyncData";
-import { RiskBadge } from "../components/RiskBadge";
 import { GridMap } from "../components/GridMap";
+import { RegionGroupedAssets } from "../components/RegionGroupedAssets";
 import { LastUpdated } from "../components/LastUpdated";
 import { DashboardSkeleton } from "../components/Skeleton";
 import { EmptyBlock, ErrorBlock, FallbackBanner } from "../components/StatusStates";
@@ -12,10 +11,8 @@ import type { Asset, RiskTier } from "../api/types";
 
 const TIERS: RiskTier[] = ["Critical", "High", "Medium", "Low"];
 const POLL_INTERVAL_MS = 30_000;
-const PAGE_SIZE = 10;
 
 export function Dashboard() {
-  const navigate = useNavigate();
   const {
     data: assets,
     loading,
@@ -37,7 +34,6 @@ export function Dashboard() {
   const [regionFilter, setRegionFilter] = useState<string>("all");
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [sortDesc, setSortDesc] = useState(true);
-  const [page, setPage] = useState(1);
 
   const regions = useMemo(
     () => Array.from(new Set((assets ?? []).map((a) => a.region))).sort(),
@@ -57,26 +53,16 @@ export function Dashboard() {
     );
   }, [assets, regionFilter, tierFilter, sortDesc]);
 
-  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  const clampedPage = Math.min(page, pageCount);
-  const pageRows = useMemo(
-    () => rows.slice((clampedPage - 1) * PAGE_SIZE, clampedPage * PAGE_SIZE),
-    [rows, clampedPage],
-  );
-
   function updateRegionFilter(value: string) {
     setRegionFilter(value);
-    setPage(1);
   }
 
   function updateTierFilter(value: string) {
     setTierFilter(value);
-    setPage(1);
   }
 
   function toggleSort() {
     setSortDesc((v) => !v);
-    setPage(1);
   }
 
   return (
@@ -136,66 +122,11 @@ export function Dashboard() {
             {rows.length === 0 ? (
               <EmptyBlock message="No assets match the current filters." />
             ) : (
-              <div className="border border-carbon-gray-20 bg-carbon-white">
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-sm">
-                    <thead className="bg-carbon-gray-10/60">
-                      <tr className="text-left">
-                        <th className="kicker px-3 py-3 border-b border-carbon-gray-20">Name</th>
-                        <th className="kicker px-3 py-3 border-b border-carbon-gray-20">Type</th>
-                        <th className="kicker px-3 py-3 border-b border-carbon-gray-20">Region</th>
-                        <th className="kicker px-3 py-3 border-b border-carbon-gray-20">Tier</th>
-                        <th className="kicker px-3 py-3 border-b border-carbon-gray-20">
-                          <button
-                            type="button"
-                            onClick={toggleSort}
-                            className="flex items-center gap-1 transition-colors hover:text-carbon-gray-100 focus:outline-none focus:ring-2 focus:ring-carbon-blue-60"
-                          >
-                            Risk Score {sortDesc ? "↓" : "↑"}
-                          </button>
-                        </th>
-                        <th className="kicker px-3 py-3 border-b border-carbon-gray-20">
-                          Grid Impact
-                        </th>
-                        <th className="kicker px-3 py-3 border-b border-carbon-gray-20">
-                          Customers
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-carbon-gray-20">
-                      {pageRows.map((asset) => (
-                        <tr
-                          key={asset.asset_id}
-                          onClick={() => navigate(`/assets/${asset.asset_id}`)}
-                          className="cursor-pointer transition-colors hover:bg-carbon-gray-10"
-                        >
-                          <td className="px-3 py-4 font-serif text-[15px] font-medium text-carbon-gray-100">
-                            {asset.name}
-                          </td>
-                          <td className="px-3 py-4 text-carbon-gray-70">{asset.type}</td>
-                          <td className="px-3 py-4 text-carbon-gray-70">{asset.region}</td>
-                          <td className="px-3 py-4">
-                            <RiskBadge tier={asset.risk_tier} size="sm" />
-                          </td>
-                          <td className="px-3 py-4 font-mono font-tabular font-medium text-carbon-gray-100">
-                            {asset.risk_score}
-                          </td>
-                          <td className="px-3 py-4 text-carbon-gray-70">
-                            {asset.grid_impact_severity}
-                          </td>
-                          <td className="px-3 py-4 font-mono font-tabular text-carbon-gray-70">
-                            {asset.customers_served.toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {rows.length > 0 && (
-                  <Pagination page={clampedPage} pageCount={pageCount} onChange={setPage} />
-                )}
-              </div>
+              <RegionGroupedAssets
+                assets={rows}
+                sortDesc={sortDesc}
+                onToggleSort={toggleSort}
+              />
             )}
           </section>
         </>
@@ -204,83 +135,6 @@ export function Dashboard() {
   );
 }
 
-interface PaginationProps {
-  page: number;
-  pageCount: number;
-  onChange: (page: number) => void;
-}
-
-function Pagination({ page, pageCount, onChange }: PaginationProps) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-t border-carbon-gray-20 px-4 py-3">
-      <span className="font-mono text-xs text-carbon-gray-60">
-        Page {page} of {pageCount}
-      </span>
-      <div className="flex items-center gap-1">
-        <PageButton onClick={() => onChange(1)} disabled={page === 1} label="First">
-          «
-        </PageButton>
-        <PageButton onClick={() => onChange(page - 1)} disabled={page === 1} label="Previous">
-          ‹
-        </PageButton>
-        {pageNumbersAround(page, pageCount).map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => onChange(n)}
-            aria-current={n === page ? "page" : undefined}
-            className={`h-8 min-w-8 px-2 font-mono text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-carbon-blue-60 ${
-              n === page
-                ? "border-b-2 border-carbon-gray-100 font-semibold text-carbon-gray-100"
-                : "text-carbon-gray-60 hover:text-carbon-gray-100"
-            }`}
-          >
-            {n}
-          </button>
-        ))}
-        <PageButton onClick={() => onChange(page + 1)} disabled={page === pageCount} label="Next">
-          ›
-        </PageButton>
-        <PageButton onClick={() => onChange(pageCount)} disabled={page === pageCount} label="Last">
-          »
-        </PageButton>
-      </div>
-    </div>
-  );
-}
-
-function pageNumbersAround(page: number, pageCount: number): number[] {
-  const span = 2;
-  const start = Math.max(1, page - span);
-  const end = Math.min(pageCount, page + span);
-  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-}
-
-function PageButton({
-  onClick,
-  disabled,
-  label,
-  children,
-}: {
-  onClick: () => void;
-  disabled: boolean;
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      className="h-8 min-w-8 px-2 font-mono text-sm text-carbon-gray-60 transition-colors hover:text-carbon-gray-100 disabled:cursor-not-allowed disabled:text-carbon-gray-30 disabled:hover:text-carbon-gray-30 focus:outline-none focus:ring-2 focus:ring-carbon-blue-60"
-    >
-      {children}
-    </button>
-  );
-}
-
-/** Names each input feed so nobody has to guess which numbers are real. */
 function DataSourceLine({ weatherSource }: { weatherSource: string }) {
   const isLive = weatherSource.startsWith("live");
   return (

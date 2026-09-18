@@ -6,14 +6,7 @@ import { RiskBadge } from "../components/RiskBadge";
 import { MaintenancePlanSkeleton } from "../components/Skeleton";
 import { EmptyBlock, ErrorBlock, FallbackBanner } from "../components/StatusStates";
 import type { MaintenanceItem } from "../api/types";
-
-const URGENT_WINDOW_DAYS = 7;
-
-function daysUntil(dateStr: string): number {
-  const target = new Date(dateStr).getTime();
-  const now = Date.now();
-  return Math.ceil((target - now) / 86_400_000);
-}
+import { URGENT_WINDOW_DAYS, daysUntil } from "../lib/maintenanceTiming";
 
 export function MaintenancePlan() {
   const { data: plan, loading, error, isFallback } = useAsyncData(
@@ -94,6 +87,7 @@ function MaintenanceRow({ item }: { item: MaintenanceItem }) {
         <div className="flex flex-wrap items-center gap-3">
           <Link
             to={`/assets/${item.asset_id}`}
+            state={{ from: "/maintenance-plan" }}
             className="font-serif text-lg font-semibold text-carbon-gray-100 transition-colors hover:text-carbon-blue-70"
           >
             {item.asset_name}

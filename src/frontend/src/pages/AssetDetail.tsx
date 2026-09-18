@@ -1,7 +1,8 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { getAsset, getRiskBreakdown } from "../api/client";
 import { getMockAsset, getMockRiskBreakdown } from "../api/mockData";
 import { useAsyncData } from "../hooks/useAsyncData";
+import { RecommendedAction } from "../components/RecommendedAction";
 import { RiskBadge } from "../components/RiskBadge";
 import { SensorChart } from "../components/SensorChart";
 import { LastUpdated } from "../components/LastUpdated";
@@ -14,6 +15,15 @@ const POLL_INTERVAL_MS = 30_000;
 export function AssetDetail() {
   const { id } = useParams<{ id: string }>();
   const assetId = id ?? "";
+
+  // Drilling in from the Maintenance Plan and being offered only "back to
+  // dashboard" loses the operator's place. The originating page tags the link
+  // so we can return them where they came from.
+  const location = useLocation();
+  const cameFromPlan =
+    (location.state as { from?: string } | null)?.from === "/maintenance-plan";
+  const backTo = cameFromPlan ? "/maintenance-plan" : "/";
+  const backLabel = cameFromPlan ? "Back to maintenance plan" : "Back to dashboard";
 
   const asset = useAsyncData(() => getAsset(assetId), () => getMockAsset(assetId), [assetId], {
     pollIntervalMs: POLL_INTERVAL_MS,
@@ -43,10 +53,10 @@ export function AssetDetail() {
     <div className="space-y-10">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-carbon-gray-20 pb-4">
         <Link
-          to="/"
+          to={backTo}
           className="font-sans text-sm text-carbon-gray-70 transition-colors hover:text-carbon-gray-100"
         >
-          &larr; Back to dashboard
+          &larr; {backLabel}
         </Link>
         {asset.data && (
           <LastUpdated timestamp={lastUpdatedAt} isRefreshing={isRefreshing} onRefresh={refreshAll} />
@@ -74,6 +84,8 @@ export function AssetDetail() {
             riskTier={asset.data.risk_tier}
             riskScore={asset.data.risk_score}
           />
+
+          <RecommendedAction assetId={assetId} />
 
           {breakdown.data && (
             <>

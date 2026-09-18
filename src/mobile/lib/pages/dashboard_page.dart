@@ -6,17 +6,15 @@ import '../api/mock_data.dart';
 import '../api/types.dart';
 import '../state/async_data.dart';
 import '../theme/app_theme.dart';
-import '../util/formatting.dart';
 import '../util/risk_colors.dart';
 import '../widgets/grid_map.dart';
 import '../widgets/last_updated.dart';
-import '../widgets/risk_badge.dart';
+import '../widgets/region_grouped_assets.dart';
 import '../widgets/section_label.dart';
 import '../widgets/skeleton.dart';
 import '../widgets/status_states.dart';
 
 const _pollInterval = Duration(seconds: 30);
-const _pageSize = 10;
 
 /// Port of the web frontend's `Dashboard` page. Same data, same sections, same
 /// filters and pagination — the asset table becomes a stack of rows, which is
@@ -38,7 +36,6 @@ class _DashboardPageState extends State<DashboardPage> {
   String _regionFilter = 'all';
   String _tierFilter = 'all';
   bool _sortDesc = true;
-  int _page = 1;
 
   @override
   void initState() {
@@ -74,13 +71,6 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     final assets = _assets.data;
     final rows = _rows;
-    final pageCount = (rows.length / _pageSize).ceil().clamp(1, 1 << 30);
-    final clampedPage = _page.clamp(1, pageCount);
-    final pageRows = rows
-        .skip((clampedPage - 1) * _pageSize)
-        .take(_pageSize)
-        .toList(growable: false);
-
     return RefreshIndicator(
       color: AppColors.blue60,
       backgroundColor: AppColors.white,
@@ -120,32 +110,12 @@ class _DashboardPageState extends State<DashboardPage> {
             const SizedBox(height: 16),
             if (rows.isEmpty)
               const EmptyBlock(message: 'No assets match the current filters.')
-            else ...[
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  border: Border.all(color: AppColors.gray20),
-                ),
-                child: Column(
-                  children: [
-                    for (var i = 0; i < pageRows.length; i++) ...[
-                      if (i > 0) const Hairline(),
-                      _AssetRow(
-                        asset: pageRows[i],
-                        onTap: () =>
-                            context.push('/assets/${pageRows[i].assetId}'),
-                      ),
-                    ],
-                    const Hairline(),
-                    _Pagination(
-                      page: clampedPage,
-                      pageCount: pageCount,
-                      onChange: (p) => setState(() => _page = p),
-                    ),
-                  ],
-                ),
+            else
+              RegionGroupedAssets(
+                assets: rows,
+                sortDesc: _sortDesc,
+                onOpenAsset: (id) => context.push('/assets/$id'),
               ),
-            ],
           ],
         ],
       ),
@@ -216,7 +186,6 @@ class _DashboardPageState extends State<DashboardPage> {
               options: ['all', ...regions],
               onChanged: (v) => setState(() {
                 _regionFilter = v;
-                _page = 1;
               }),
             ),
             _FilterDropdown(
@@ -225,13 +194,11 @@ class _DashboardPageState extends State<DashboardPage> {
               options: ['all', ...riskTierOrder.map((t) => t.label)],
               onChanged: (v) => setState(() {
                 _tierFilter = v;
-                _page = 1;
               }),
             ),
             InkWell(
               onTap: () => setState(() {
                 _sortDesc = !_sortDesc;
-                _page = 1;
               }),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -351,167 +318,8 @@ class _StatTileGrid extends StatelessWidget {
       );
 }
 
-/// One row of the web's asset table, re-laid-out for a narrow screen. Every
-/// column the table shows is still here: name, type, region, tier, risk score,
-/// grid impact, customers.
-class _AssetRow extends StatelessWidget {
-  const _AssetRow({required this.asset, required this.onTap});
 
-  final Asset asset;
-  final VoidCallback onTap;
 
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    asset.name,
-                    style: AppText.serif(size: 16, weight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${asset.type} · ${asset.region}',
-                    style: AppText.sans(size: 13, color: AppColors.gray70),
-                  ),
-                  const SizedBox(height: 8),
-                  RiskBadge(tier: asset.riskTier, size: BadgeSize.sm),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Grid impact ${asset.gridImpactSeverity}/10  ·  '
-                    '${formatCount(asset.customersServed)} customers',
-                    style: AppText.sans(size: 12, color: AppColors.gray60),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  formatScore(asset.riskScore),
-                  style: AppText.mono(size: 22, weight: FontWeight.w600),
-                ),
-                Text(
-                  'SCORE',
-                  style: AppText.kicker(size: 9),
-                ),
-              ],
-            ),
-            const Icon(Icons.chevron_right, color: AppColors.gray30),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Pagination extends StatelessWidget {
-  const _Pagination({
-    required this.page,
-    required this.pageCount,
-    required this.onChange,
-  });
-
-  final int page;
-  final int pageCount;
-  final ValueChanged<int> onChange;
-
-  List<int> _pageNumbersAround() {
-    const span = 1;
-    final start = (page - span).clamp(1, pageCount);
-    final end = (page + span).clamp(1, pageCount);
-    return [for (var n = start; n <= end; n++) n];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          Text(
-            'Page $page of $pageCount',
-            style: AppText.mono(size: 11, color: AppColors.gray60),
-          ),
-          const Spacer(),
-          _button('«', page > 1, () => onChange(1)),
-          _button('‹', page > 1, () => onChange(page - 1)),
-          for (final n in _pageNumbersAround())
-            _NumberButton(
-              number: n,
-              isCurrent: n == page,
-              onTap: () => onChange(n),
-            ),
-          _button('›', page < pageCount, () => onChange(page + 1)),
-          _button('»', page < pageCount, () => onChange(pageCount)),
-        ],
-      ),
-    );
-  }
-
-  Widget _button(String glyph, bool enabled, VoidCallback onTap) => InkWell(
-        onTap: enabled ? onTap : null,
-        child: Container(
-          width: 30,
-          height: 32,
-          alignment: Alignment.center,
-          child: Text(
-            glyph,
-            style: AppText.mono(
-              size: 14,
-              color: enabled ? AppColors.gray60 : AppColors.gray30,
-            ),
-          ),
-        ),
-      );
-}
-
-class _NumberButton extends StatelessWidget {
-  const _NumberButton({
-    required this.number,
-    required this.isCurrent,
-    required this.onTap,
-  });
-
-  final int number;
-  final bool isCurrent;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        child: Container(
-          constraints: const BoxConstraints(minWidth: 30),
-          height: 32,
-          alignment: Alignment.center,
-          decoration: isCurrent
-              ? const BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: AppColors.gray100, width: 2),
-                  ),
-                )
-              : null,
-          child: Text(
-            '$number',
-            style: AppText.mono(
-              size: 14,
-              weight: isCurrent ? FontWeight.w600 : FontWeight.w400,
-              color: isCurrent ? AppColors.gray100 : AppColors.gray60,
-            ),
-          ),
-        ),
-      );
-}
 
 class _FilterDropdown extends StatelessWidget {
   const _FilterDropdown({

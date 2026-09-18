@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../util/formatting.dart';
 import '../util/sensor_trend.dart';
 import '../widgets/last_updated.dart';
+import '../widgets/recommended_action.dart';
 import '../widgets/risk_badge.dart';
 import '../widgets/section_label.dart';
 import '../widgets/sensor_chart.dart';
@@ -136,6 +137,10 @@ class _AssetDetailPageState extends State<AssetDetailPage> {
           if (asset != null) ...[
             const SizedBox(height: 24),
             _AssetHeader(asset: asset),
+            const SizedBox(height: 32),
+            // "What do I do about this" comes before "why is the score what it
+            // is" — it is the question an operator drilled in to answer.
+            RecommendedAction(assetId: widget.assetId),
             if (breakdown != null) ...[
               const SizedBox(height: 32),
               _WhyThisScore(components: breakdown.components),
