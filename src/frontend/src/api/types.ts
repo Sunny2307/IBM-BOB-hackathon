@@ -167,6 +167,21 @@ export interface OperatorUser {
   is_active: boolean;
 }
 
+/** One asset an alert to a given user could actually land on. */
+export interface AssignableAsset {
+  asset_id: string;
+  name: string;
+  region: string;
+  risk_score: number;
+  risk_tier: RiskTier;
+}
+
+/** Result of an admin raising an alert for a named person. */
+export interface SentAlert {
+  alert: Alert;
+  notified: string;
+}
+
 export interface Assignment {
   id: number;
   user_id: number;

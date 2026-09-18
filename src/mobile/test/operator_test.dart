@@ -10,7 +10,12 @@ import 'package:grid_advisor_mobile/api/client.dart';
 import 'package:grid_advisor_mobile/api/types.dart';
 import 'package:grid_advisor_mobile/state/alert_poller.dart';
 
-Map<String, dynamic> _alertJson(int id, {String tier = 'Critical', String status = 'open'}) => {
+Map<String, dynamic> _alertJson(
+  int id, {
+  String tier = 'Critical',
+  String status = 'open',
+  String raisedAt = '2026-09-18T10:00:00+00:00',
+}) => {
       'id': id,
       'asset_id': 'AST-0$id',
       'asset_name': 'Test Substation $id',
@@ -20,7 +25,7 @@ Map<String, dynamic> _alertJson(int id, {String tier = 'Critical', String status
       'risk_score': 91.4,
       'headline': 'Test Substation $id moved Medium to $tier.',
       'status': status,
-      'raised_at': '2026-09-18T10:00:00+00:00',
+      'raised_at': raisedAt,
       'acknowledged_by_name': null,
       'acknowledged_at': null,
     };
@@ -177,6 +182,71 @@ void main() {
 
       await poller.poll();
       expect(notified, [2], reason: 'and it must not re-fire on the next poll');
+    });
+
+    test('an admin re-sending the SAME alert notifies again', () async {
+      // The server keeps one live alert row per asset and re-opens it instead
+      // of stacking duplicates, so a re-sent alert comes back with the id the
+      // phone already saw. Deduping on id alone swallowed it and the admin's
+      // "Send alert" button did nothing on the handset.
+      final notified = <int>[];
+      var current = [_alertJson(105, tier: 'High')];
+      final client = _clientReturning(() => current);
+      client.authToken = 'test-token';
+
+      final poller = AlertPoller.forTest(
+        client: client,
+        onNotify: (alert) async => notified.add(alert.id),
+      );
+
+      await poller.poll(); // prime on the existing backlog
+      expect(notified, isEmpty);
+
+      // Admin presses "Send alert": same row, same id, new raised_at.
+      current = [
+        _alertJson(105, tier: 'High', raisedAt: '2026-09-18T11:30:00+00:00'),
+      ];
+      await poller.poll();
+      expect(notified, [105], reason: 're-raising must reach the crew');
+
+      await poller.poll();
+      expect(notified, [105], reason: 'but only once per re-raise');
+    });
+
+    test('an escalation on an already-seen alert notifies', () async {
+      final notified = <int>[];
+      var current = [_alertJson(7, tier: 'High')];
+      final client = _clientReturning(() => current);
+      client.authToken = 'test-token';
+
+      final poller = AlertPoller.forTest(
+        client: client,
+        onNotify: (alert) async => notified.add(alert.id),
+      );
+
+      await poller.poll(); // prime
+      current = [_alertJson(7, tier: 'Critical')];
+      await poller.poll();
+
+      expect(notified, [7], reason: 'High to Critical is news, same id or not');
+    });
+
+    test('acknowledging does NOT re-notify', () async {
+      final notified = <int>[];
+      var current = [_alertJson(3)];
+      final client = _clientReturning(() => current);
+      client.authToken = 'test-token';
+
+      final poller = AlertPoller.forTest(
+        client: client,
+        onNotify: (alert) async => notified.add(alert.id),
+      );
+
+      await poller.poll(); // prime
+      current = [_alertJson(3, status: 'acknowledged')];
+      await poller.poll();
+
+      expect(notified, isEmpty, reason: 'status changes are not new events');
     });
 
     test('signing out forgets history so the next user starts clean', () async {

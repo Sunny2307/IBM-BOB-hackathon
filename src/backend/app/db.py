@@ -62,6 +62,18 @@ def init() -> bool:
             max_size=5,
             open=True,
             timeout=10.0,
+            # Neon closes idle connections (it scales to zero between bursts),
+            # so a pooled socket that sat overnight is dead on arrival. Without
+            # `check` the pool hands those out anyway and every operator route
+            # — sign-in included — starts failing with PoolTimeout until
+            # someone restarts the process. That was a real outage, not a
+            # theoretical one.
+            #
+            # `check_connection` validates a connection before lending it and
+            # quietly replaces a dead one; `max_idle` retires idle connections
+            # on our own schedule rather than waiting for Neon to cut them.
+            check=ConnectionPool.check_connection,
+            max_idle=120.0,
             kwargs={"row_factory": dict_row},
         )
         with pool.connection() as conn:

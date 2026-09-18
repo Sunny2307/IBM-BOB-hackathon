@@ -1,6 +1,7 @@
 import type {
   Alert,
   AlertInbox,
+  AssignableAsset,
   Assignment,
   Asset,
   AuthSession,
@@ -11,6 +12,7 @@ import type {
   CopilotResponse,
   MaintenancePlan,
   RiskBreakdown,
+  SentAlert,
 } from "./types";
 
 const BASE_URL: string =
@@ -159,6 +161,26 @@ export function createAssignment(body: {
 
 export function deleteAssignment(assignmentId: number): Promise<void> {
   return request<void>(`/admin/assignments/${assignmentId}`, { method: "DELETE" });
+}
+
+/** The assets an alert to this user could reach. Empty = no assignments yet. */
+export function getAssignableAssets(userId: number): Promise<AssignableAsset[]> {
+  return request<AssignableAsset[]>(`/admin/users/${userId}/assignable-assets`);
+}
+
+/**
+ * Raises a real alert so a named person is notified now, rather than waiting
+ * for an asset to cross tiers on its own. Omitting `asset_id` lets the server
+ * pick the highest-risk asset inside that user's scope.
+ */
+export function sendAlert(body: {
+  user_id: number;
+  asset_id?: string;
+}): Promise<SentAlert> {
+  return request<SentAlert>("/admin/alerts/send", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export function askCopilot(

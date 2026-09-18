@@ -5,6 +5,7 @@ import { useAsyncData } from "../hooks/useAsyncData";
 import { useAuth } from "../auth/AuthContext";
 import { RiskBadge } from "../components/RiskBadge";
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "../components/StatusStates";
+import { SendAlertPanel } from "../components/SendAlertPanel";
 import type { Alert, AlertInbox, RiskTier } from "../api/types";
 
 const POLL_INTERVAL_MS = 30_000;
@@ -12,7 +13,7 @@ const POLL_INTERVAL_MS = 30_000;
 const EMPTY_INBOX: AlertInbox = { count: 0, scope: "", alerts: [] };
 
 export function Alerts() {
-  const { session } = useAuth();
+  const { session, isAdmin } = useAuth();
   // No mock fallback here on purpose: inventing alerts on an operations screen
   // would be worse than showing the error.
   const { data, loading, error, refetch } = useAsyncData(
@@ -39,6 +40,8 @@ export function Alerts() {
             : "Raised when an asset crosses up into High or Critical risk."}
         </p>
       </div>
+
+      {isAdmin && <SendAlertPanel onSent={refetch} />}
 
       {loading && alerts.length === 0 && <LoadingBlock label="Loading your alerts" />}
       {error && alerts.length === 0 && <ErrorBlock message={error} onRetry={refetch} />}

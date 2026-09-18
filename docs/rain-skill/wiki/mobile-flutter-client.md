@@ -108,3 +108,92 @@ Notification permissions are already wired: `POST_NOTIFICATIONS` and
 `requestNotificationsPermission()` call in `lib/services/notifications.dart`
 (required from Android 13 on; the test device runs Android 16).
 
+## Sign-in failures: two distinct causes (2026-09-18)
+
+Sign-in failed on the handset with "Could not reach API". There were **two**
+independent causes; fixing only one leaves it broken.
+
+**1. The connection pool had no health check (the real one).**
+`app/db.py` built its `ConnectionPool` without `check=`, which defaults to
+`None`. Neon closes idle connections when it scales to zero, so pooled sockets
+go dead; the pool then hands out or waits on corpses and every operator route
+fails with `PoolTimeout: couldn't get a connection after 10.00 sec` until the
+process is restarted. Observed directly: `pg_stat_activity` showed only 2 of
+901 connections in use while the server insisted the database was unavailable.
+Fixed with `check=ConnectionPool.check_connection` plus `max_idle=120`, so a
+dead connection is validated and replaced instead of being served.
+
+**2. The dev tunnel drops requests, and POSTs were single-shot.**
+Measured from the handset: 3 of 6 `POST /auth/login` calls hung forever (never
+errored), while every response that did arrive came back in about a second.
+`ApiClient` retried GETs three times but POSTs exactly once, so the dashboard
+survived and sign-in did not. Retry is now decided **per call**, not per verb —
+`retryable:` at each call site. Login, alert-ack and assignment-delete retry;
+the copilot POST and the create-user/create-assignment mutations do not,
+because a retry there costs an extra LLM call or 409s after already succeeding.
+
+Neither cause is visible from the error message alone, which is why the fix
+started with `adb shell curl` against the tunnel from the device rather than
+with code changes.
+
+## Alert flapping and the grace period (2026-09-18)
+
+`live_simulator` re-scores every asset every 13s, so an asset sitting near the
+High boundary (50) crosses back and forth and the monitor raised then resolved
+an alert almost every tick — AST-020 had four raise/resolve cycles in the
+table. It also meant a hand-raised alert vanished ~60s after an admin sent it,
+before the recipient's phone had polled.
+
+`alert_monitor.RESOLVE_GRACE_SECONDS` (600) now blocks auto-resolve inside the
+first ten minutes. When the grace window blocks a resolve, `asset_tier_state`
+is deliberately left untouched so the next tick re-evaluates the same
+transition rather than recording the drop and never resolving at all.
+
+## Sending an alert to a named person
+
+`POST /admin/alerts/send` (admin only) raises a **real** alert — same table,
+same headline wording, same one-open-alert-per-asset rule as the automatic
+monitor. There is no separate "test notification" path on purpose: a test that
+bypasses the real pipeline proves nothing about the real pipeline.
+
+Reachable two ways in the app: the **Send** tab in the admin nav, and a
+**Trigger an alert** strip at the top of the Alerts inbox (admins only).
+
+The recipient must have an assignment — alerts are scoped by region, so a user
+with none sees nothing whatever you send. `GET /admin/users/{id}/assignable-assets`
+backs the picker so an admin cannot send into the void, and an unassigned user
+gets a message naming the fix rather than a silent no-op.
+
+Note that scoping is by region, not by person: anyone else covering that region
+sees the same alert. That is intended — the whole crew responsible for an area
+should know.
+
+## Why "Send alert" fired nothing on the handset (2026-09-18)
+
+The web button reported success and the phone stayed silent. Two correct
+behaviours combined into a bug:
+
+- `raise_alert_for_user` is idempotent per asset — a partial unique index
+  allows one live alert per asset, so re-sending **re-opens the existing row**
+  and returns the id it already had (#105, in the reported case).
+- `AlertPoller` de-duplicated on `alert.id` alone, so that row looked like an
+  alert the phone had already notified about, and `fresh` came back empty.
+
+Idempotency is right for the automatic monitor and wrong for an explicit
+manual send. Fixed on both sides:
+
+- The re-open branch now also sets `raised_at = now()`, making a re-raise a
+  genuinely new event rather than a silent no-op.
+- The poller's dedup key is now `(id, raisedAt, tier)` rather than `id`.
+  Including `tier` means a High→Critical escalation also notifies even though
+  the row keeps its id; excluding `status` means acknowledging never
+  re-notifies.
+
+Pinned by three tests in `test/operator_test.dart`: re-sending the same alert
+notifies again (but only once per re-raise), an escalation notifies, and an
+acknowledgement does not.
+
+**Still outstanding:** the poller only runs while the app is alive or
+backgrounded. Nothing arrives after a force-kill — that needs FCM or a
+`workmanager` background task, neither of which is built yet.
+

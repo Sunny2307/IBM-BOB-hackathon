@@ -78,6 +78,16 @@ class _AlertsPageState extends State<AlertsPage> {
           ),
           const SizedBox(height: 20),
           const Hairline(),
+
+          // Admins get a manual trigger right here in the inbox. Waiting for an
+          // asset to cross tiers on its own is fine in production and useless
+          // in a demo or a drill, where you need an alert to land on a
+          // specific person's phone now.
+          if (session?.isAdmin ?? false) ...[
+            const SizedBox(height: 20),
+            _SendAlertBar(onSent: _poller.poll),
+          ],
+
           const SizedBox(height: 24),
 
           if (_poller.error != null) ...[
@@ -251,6 +261,70 @@ class _AlertCardState extends State<_AlertCard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Admin-only shortcut in the inbox: raise a real alert for a chosen teammate
+/// without leaving the screen. Deliberately a strip rather than a lone icon —
+/// an admin should be able to see what it does before tapping it.
+class _SendAlertBar extends StatelessWidget {
+  const _SendAlertBar({required this.onSent});
+
+  final Future<void> Function() onSent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border.all(color: AppColors.gray20),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      child: Row(
+        children: [
+          const Icon(Icons.campaign_outlined, size: 20, color: AppColors.blue60),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Trigger an alert',
+                  style: AppText.serif(size: 16, weight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Notify a specific crew member now',
+                  style: AppText.sans(size: 12, color: AppColors.gray60),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              await context.push('/admin/send-alert');
+              // Anything sent while we were away should show up on return.
+              await onSent();
+            },
+            style: TextButton.styleFrom(
+              shape: const RoundedRectangleBorder(),
+              backgroundColor: AppColors.blue60,
+              foregroundColor: AppColors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            child: Text(
+              'SEND',
+              style: AppText.sans(
+                size: 12,
+                weight: FontWeight.w600,
+                color: AppColors.white,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

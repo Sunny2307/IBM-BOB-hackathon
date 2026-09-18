@@ -277,22 +277,30 @@ def raise_alert_for_user(user_id: int, company_id: int, asset_id: str | None = N
             INSERT INTO alerts (company_id, asset_id, asset_name, region, tier,
                                 previous_tier, risk_score, headline)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id, asset_id, asset_name, region, tier, risk_score, headline, status
+            RETURNING id, asset_id, asset_name, region, tier, risk_score, headline,
+                      status, raised_at
             """,
             (company_id, asset["asset_id"], asset["name"], asset["region"], tier,
              previous_tier, asset["risk_score"], headline),
         )
     else:
         # Re-open rather than stack a duplicate: the partial unique index only
-        # allows one live alert per asset, and re-opening is what makes the
-        # crew's phone buzz again.
+        # allows one live alert per asset.
+        #
+        # `raised_at = now()` is load-bearing, not cosmetic. The crew app
+        # de-duplicates notifications by (id, raised_at, tier), so without this
+        # bump a re-sent alert keeps the id it already had, looks like an alert
+        # the phone has seen before, and silently fires nothing — which is
+        # exactly the bug an admin pressing "Send alert" would report.
         row = db.execute(
             """
             UPDATE alerts
                SET tier = %s, risk_score = %s, headline = %s, status = 'open',
-                   acknowledged_by = NULL, acknowledged_at = NULL, resolved_at = NULL
+                   acknowledged_by = NULL, acknowledged_at = NULL, resolved_at = NULL,
+                   raised_at = now()
              WHERE id = %s
-            RETURNING id, asset_id, asset_name, region, tier, risk_score, headline, status
+            RETURNING id, asset_id, asset_name, region, tier, risk_score, headline,
+                      status, raised_at
             """,
             (tier, asset["risk_score"], headline, existing["id"]),
         )

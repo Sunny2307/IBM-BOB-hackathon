@@ -36,7 +36,8 @@ class AlertPoller extends ChangeNotifier {
 
   static const pollInterval = Duration(seconds: 30);
 
-  final Set<int> _seen = {};
+  /// Signatures of alerts already notified — see [_signatureOf].
+  final Set<String> _seen = {};
   Timer? _timer;
   bool _primed = false;
 
@@ -88,8 +89,9 @@ class AlertPoller extends ChangeNotifier {
       _error = null;
       _lastPolledAt = DateTime.now();
 
-      final fresh = _alerts.where((a) => !_seen.contains(a.id)).toList();
-      _seen.addAll(_alerts.map((a) => a.id));
+      final fresh =
+          _alerts.where((a) => !_seen.contains(_signatureOf(a))).toList();
+      _seen.addAll(_alerts.map(_signatureOf));
 
       if (_primed) {
         for (final alert in fresh) {
@@ -106,6 +108,24 @@ class AlertPoller extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// What counts as "an alert I have already notified about".
+  ///
+  /// The id alone is not enough. The server keeps ONE live alert row per asset
+  /// and re-opens it rather than stacking duplicates, so a re-raised alert —
+  /// an admin pressing "Send alert", or the monitor escalating High to
+  /// Critical — arrives with an id the phone has already seen and would be
+  /// silently swallowed.
+  ///
+  /// Including `raisedAt` makes a re-raise a genuinely new event, and `tier`
+  /// makes an escalation one. Status is deliberately excluded: acknowledging
+  /// an alert must not re-notify anyone.
+  /// `raisedAt` is nullable (a malformed timestamp parses to null); falling
+  /// back to 0 keeps such an alert stable rather than re-notifying on every
+  /// poll, which is the safer failure.
+  static String _signatureOf(Alert alert) =>
+      '${alert.id}@${alert.raisedAt?.millisecondsSinceEpoch ?? 0}'
+      '#${alert.tier.label}';
 
   /// Drops an alert from the local list after it is acknowledged, so the badge
   /// updates immediately instead of waiting up to 30s for the next poll.
